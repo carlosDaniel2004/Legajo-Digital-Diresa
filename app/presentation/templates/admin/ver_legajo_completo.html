@@ -171,7 +171,7 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
             <form id="deleteDocForm" method="POST" action="">
-              {{ form_documento.csrf_token }}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-danger">Sí, eliminar</button>
             </form>
           </div>
@@ -195,7 +195,10 @@
                 const deleteForm = confirmDeleteModal.querySelector('#deleteDocForm');
                 
                 if (modalTitle) { modalTitle.textContent = docName; }
-                if (deleteForm) { deleteForm.action = `/legajos/documento/${docId}/eliminar`; }
+                if (deleteForm) { 
+                    const urlTemplate = "{{ url_for('legajo.eliminar_documento', documento_id=12345) }}";
+                    deleteForm.action = urlTemplate.replace('12345', docId);
+                }
             });
         }
 

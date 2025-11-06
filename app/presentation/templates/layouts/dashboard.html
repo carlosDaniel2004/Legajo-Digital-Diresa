@@ -7,7 +7,7 @@
             <h5 class="user-name">{{ current_user.nombre_completo or current_user.username }}</h5>
             {% if current_user.fecha_ultimo_login %}
             <div class="last-login">
-                Última sesión a las: {{ current_user.fecha_ultimo_login.strftime('%H:%M %d/%m/%Y') }}
+                Última sesión: {{ current_user.fecha_ultimo_login | localtime }}
             </div>
             {% endif %}
             <div class="profile-circle">

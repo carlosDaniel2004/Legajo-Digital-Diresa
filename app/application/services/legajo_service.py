@@ -38,9 +38,23 @@ class LegajoService:
         """Obtiene una lista paginada y filtrada de personal."""
         return self._personal_repo.get_all_paginated(page, per_page, filters)
 
-    def get_personal_details(self, personal_id):
-        """Obtiene todos los detalles del legajo de una persona por su ID."""
-        return self._personal_repo.get_full_legajo_by_id(personal_id)
+    def get_personal_details(self, personal_id, current_user):
+        """
+        Obtiene todos los detalles del legajo de una persona por su ID,
+        aplicando reglas de control de acceso.
+        """
+        legajo = self._personal_repo.get_full_legajo_by_id(personal_id)
+        if not legajo:
+            return None
+
+        # Seguridad: Los roles 'RRHH', 'Sistemas' y 'AdministradorLegajos' tienen permitido ver cualquier legajo.
+        # Se mantiene la estructura por si se necesita añadir lógica de permisos más granular en el futuro.
+        if current_user.rol not in ['RRHH', 'Sistemas', 'AdministradorLegajos']:
+            # Si el rol no es uno de los permitidos, se deniega el acceso.
+            # (Actualmente, los decoradores de ruta ya previenen esto, pero es una doble capa de seguridad).
+            raise PermissionError("No tiene permiso para ver este legajo.")
+
+        return legajo
 
     def get_documents_by_personal_id(self, personal_id):
         """Obtiene los documentos de un empleado."""
@@ -208,3 +222,14 @@ class LegajoService:
     def get_empleados_por_sexo(self):
         """Orquesta la obtención del conteo de empleados por sexo."""
         return self._personal_repo.count_empleados_por_sexo()
+
+    def update_personal_details(self, personal_id, form_data, updating_user_id):
+        """Actualiza los detalles de un legajo de personal y audita la acción."""
+        self._personal_repo.update(personal_id, form_data)
+        self._audit_service.log(
+            updating_user_id, 
+            'Personal', 
+            'ACTUALIZAR', 
+            f"Se actualizaron los datos del legajo para el personal ID {personal_id}", 
+            form_data
+        )

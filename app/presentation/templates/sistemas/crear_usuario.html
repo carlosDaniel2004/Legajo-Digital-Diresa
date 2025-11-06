@@ -1,9 +1,9 @@
-{% extends 'layouts/sistemas_base.html' %}
+{% extends 'layouts/dashboard.html' %}
 {% from "components/_form_helpers.html" import render_field %}
 
 {% block title %}Crear Nuevo Usuario{% endblock %}
 
-{% block content %}
+{% block dashboard_content %}
 <div class="container-fluid">
     <h1 class="h3 mb-4 text-gray-800">Crear Nuevo Usuario</h1>
 
@@ -25,7 +25,7 @@
                 </div>
 
                 <div class="form-group">
-                    {{ render_field(form.rol, class="form-control") }}
+                    {{ render_field(form.id_rol, class="form-control") }}
                 </div>
 
                 <div class="form-group row">
@@ -33,7 +33,7 @@
                         {{ render_field(form.password, class="form-control form-control-user", placeholder="Contraseña") }}
                     </div>
                     <div class="col-sm-6">
-                        {{ render_field(form.confirm_password, class="form-control form-control-user", placeholder="Repetir Contraseña") }}
+                        {{ render_field(form.confirm, class="form-control form-control-user", placeholder="Repetir Contraseña") }}
                     </div>
                 </div>
 

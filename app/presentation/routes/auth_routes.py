@@ -3,10 +3,13 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
 from flask_login import login_user, logout_user, current_user
 from app.application.forms import LoginForm, TwoFactorForm
+from app import limiter
 
 auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+# Seguridad: Aplicar un límite de intentos para prevenir ataques de fuerza bruta.
+@limiter.limit("10 per minute")
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('index')) # Asumimos que 'index' maneja la redirección post-login si ya está autenticado
@@ -20,6 +23,8 @@ def login():
             if user_id:
                 session['2fa_user_id'] = user_id
                 session['2fa_username'] = form.username.data
+                # Guardar el estado de "Recordarme" en la sesión
+                session['2fa_remember_me'] = form.remember_me.data
                 return redirect(url_for('auth.verify_2fa'))
             else:
                 flash('Usuario o contraseña incorrectos.', 'danger')
@@ -32,6 +37,8 @@ def login():
     return render_template('auth/login.html', form=form)
 
 @auth_bp.route('/login/verify', methods=['GET', 'POST'])
+# Seguridad: Aplicar un límite de intentos para prevenir el bombardeo de códigos.
+@limiter.limit("5 per minute")
 def verify_2fa():
     if '2fa_user_id' not in session:
         return redirect(url_for('auth.login'))
@@ -44,9 +51,14 @@ def verify_2fa():
 
         if user:
             usuario_service.update_last_login(user_id)
-            login_user(user, remember=True)
+            # Recuperar el estado de "Recordarme" de la sesión
+            remember = session.get('2fa_remember_me', False)
+            login_user(user, remember=remember)
+            
+            # Limpiar toda la información de 2FA de la sesión
             session.pop('2fa_user_id', None)
             session.pop('2fa_username', None)
+            session.pop('2fa_remember_me', None)
             
             flash(f'Bienvenido de nuevo, {user.nombre_completo or user.username}!', 'success')
             

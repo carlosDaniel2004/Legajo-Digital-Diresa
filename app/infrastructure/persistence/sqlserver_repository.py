@@ -27,13 +27,29 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
         conn = get_db_read()
         cursor = conn.cursor()
         
-        # Usa el SP corregido que devuelve todos los campos requeridos por el modelo Usuario
         query = "{CALL sp_listar_todos_los_usuarios}" 
         cursor.execute(query)
         
         results = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
         
-        return [Usuario.from_dict(d) for d in results]
+        # --- CORRECCIÓN: Construcción manual y segura de objetos ---
+        # Esto previene errores si el SP no devuelve todas las columnas esperadas.
+        usuarios = []
+        for data in results:
+            if data:
+                usuario = Usuario(
+                    id_usuario=data.get('id_usuario'),
+                    username=data.get('username'),
+                    id_rol=data.get('id_rol'),  # Si 'id_rol' no existe, pasará None
+                    password_hash=data.get('password_hash'),
+                    activo=data.get('activo'),
+                    email=data.get('email'),
+                    nombre_rol=data.get('nombre_rol'),
+                    nombre_completo=data.get('nombre_completo'),
+                    ultimo_login=data.get('ultimo_login')
+                )
+                usuarios.append(usuario)
+        return usuarios
 
     def find_by_id(self, user_id):
         conn = get_db_read()
@@ -41,7 +57,7 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
         query = "{CALL sp_obtener_usuario_por_id(?)}"
         cursor.execute(query, user_id)
         row_dict = _row_to_dict(cursor, cursor.fetchone())
-        return Usuario.from_dict(row_dict)
+        return Usuario(**row_dict) if row_dict else None
 
     def find_by_username_with_email(self, username):
         conn = get_db_read()
@@ -49,7 +65,7 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
         query = "{CALL sp_obtener_usuario_por_username(?)}"
         cursor.execute(query, username)
         row_dict = _row_to_dict(cursor, cursor.fetchone())
-        return Usuario.from_dict(row_dict)
+        return Usuario(**row_dict) if row_dict else None
 
     def set_2fa_code(self, user_id, hashed_code, expiry_date):
         conn = get_db_write()
@@ -237,7 +253,6 @@ class SqlServerPersonalRepository(IPersonalRepository):
         conn = get_db_write()
         cursor = conn.cursor()
         # Llama a un SP para actualizar los datos del personal.
-        # El SP debe estar preparado para recibir todos los campos del formulario.
         params = (
             personal_id,
             form_data.get('dni'),

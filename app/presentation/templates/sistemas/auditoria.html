@@ -67,18 +67,15 @@
                 <tbody>
                     {# Iteración sobre los logs paginados que vienen del backend #}
                     {% for log in pagination.items %}
-                    <tr class="log-row-{{ log.resultado | lower }}">
-                        <td>{{ log.timestamp }}</td>
-                        <td>{{ log.user_id }}</td>
+                    <tr>
+                        <td>{{ log.fecha_hora.strftime('%Y-%m-%d %H:%M:%S') if log.fecha_hora else 'N/A' }}</td>
+                        <td>{{ log.username or log.id_usuario or 'Sistema' }}</td>
                         <td>{{ log.modulo }}</td>
                         <td><span class="badge bg-secondary">{{ log.accion }}</span></td>
                         <td>{{ log.descripcion }}</td>
                         <td>
-                            {# Aplicación de color de alerta basado en el resultado (ej: SUCCESS, ERROR, CONSULTA) #}
-                            {% if 'error' in log.resultado | lower or 'fallo' in log.resultado | lower %}
+                            {% if 'error' in log.accion|lower or 'fallo' in log.accion|lower %}
                                 <span class="badge bg-danger">ERROR</span>
-                            {% elif 'consulta' in log.resultado | lower %}
-                                <span class="badge bg-info">CONSULTA</span>
                             {% else %}
                                 <span class="badge bg-success">ÉXITO</span>
                             {% endif %}

@@ -13,7 +13,13 @@ class Config:
     y es compatible con usuarios de BD de lectura y escritura separados.
     """
     # --- CONFIGURACIÓN DE SEGURIDAD DE FLASK ---
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'una-clave-insegura-solo-para-desarrollo'
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    DEBUG = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+
+    # Seguridad: En un entorno de producción (cuando DEBUG=False), es obligatorio
+    # que la SECRET_KEY esté definida. Si no lo está, la aplicación no arrancará.
+    if not SECRET_KEY and not DEBUG:
+        raise ValueError("CRITICAL: La variable de entorno SECRET_KEY no está configurada para el entorno de producción.")
 
     # --- CONFIGURACIÓN DE LA BASE DE DATOS (LECTURA/ESCRITURA) ---
     # Carga todas las credenciales desde tu archivo .env

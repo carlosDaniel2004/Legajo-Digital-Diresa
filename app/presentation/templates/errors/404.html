@@ -1,0 +1,25 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Página no Encontrada{% endblock %}
+
+{% block body_content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="card shadow-lg">
+                <div class="card-body p-5">
+                    <h1 class="display-1 text-danger font-weight-bold">404</h1>
+                    <h2 class="mb-4">Página no Encontrada</h2>
+                    <p class="lead text-muted mb-4">
+                        Lo sentimos, la página que estás buscando no existe o ha sido movida.
+                    </p>
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-house-door-fill me-2"></i>
+                        Volver al Inicio
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

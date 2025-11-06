@@ -9,6 +9,7 @@ from wtforms import StringField, PasswordField, SubmitField, SelectField, DateFi
 class LoginForm(FlaskForm):
     username = StringField('Usuario', validators=[DataRequired()])
     password = PasswordField('Contraseña', validators=[DataRequired()])
+    remember_me = BooleanField('Mantenerme conectado')
     submit = SubmitField('Iniciar Sesión')
 
 class TwoFactorForm(FlaskForm):

@@ -58,7 +58,16 @@ def ver_legajo(personal_id):
     Vista de detalle de legajo para RRHH.
     """
     legajo_service = current_app.config['LEGAJO_SERVICE']
-    legajo_completo = legajo_service.get_personal_details(personal_id)
+    try:
+        # Se pasa current_user para cualquier validación de permisos en el servicio
+        legajo_completo = legajo_service.get_personal_details(personal_id, current_user)
+    except PermissionError as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('rrhh.listar_personal'))
+    except Exception as e:
+        current_app.logger.error(f"Error al ver legajo {personal_id} para RRHH: {e}")
+        flash("Ocurrió un error al cargar el legajo.", "danger")
+        return redirect(url_for('rrhh.listar_personal'))
 
     if not legajo_completo or not legajo_completo.get('personal'):
         flash('El legajo solicitado no existe.', 'danger')

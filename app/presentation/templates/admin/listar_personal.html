@@ -140,7 +140,7 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
             <form id="deleteForm" method="POST" action="">
-                {{ csrf_token() }} {# Importante para la seguridad CSRF #}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-danger">Sí, desactivar</button>
             </form>
           </div>
@@ -162,7 +162,10 @@
                 const deleteForm = confirmDeleteModal.querySelector('#deleteForm');
                 
                 confirmDeleteModal.querySelector('#personalNameToDelete').textContent = personalName;
-                deleteForm.action = `/legajos/personal/${personalId}/eliminar`;
+                
+                // Construye la URL dinámicamente usando un marcador de posición que será reemplazado.
+                const urlTemplate = "{{ url_for('legajo.eliminar_personal', personal_id=12345) }}";
+                deleteForm.action = urlTemplate.replace('12345', personalId);
             });
         }
     });

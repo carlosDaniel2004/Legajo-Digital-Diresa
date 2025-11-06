@@ -137,6 +137,13 @@ Contiene los archivos que no cambian, como:
 -   `js`: Archivos JavaScript para la interactividad en el lado del cliente.
 -   `img`: Imágenes y otros recursos gráficos.
 
+### 5.4. Seguridad en el Frontend (CSRF)
+
+Para proteger la aplicación contra ataques de Falsificación de Peticiones en Sitios Cruzados (CSRF), se utiliza la extensión `Flask-WTF`.
+
+-   **Inclusión del Token**: Todos los formularios que realizan una acción de modificación de datos (`POST`, `PUT`, `DELETE`) deben incluir un token CSRF. Esto se logra añadiendo `{{ form.hidden_tag() }}` o un campo oculto `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">`.
+-   **Modales y JavaScript**: Se debe prestar especial atención a los formularios dentro de modales que se envían mediante JavaScript. Es fundamental que el token CSRF esté presente en el formulario del modal. La ausencia de este token resultará en un error `400 Bad Request`.
+
 ## 6. Configuración y Arranque
 
 Estos archivos son responsables de inicializar y configurar la aplicación Flask, así como de ensamblar todas las capas.
@@ -228,9 +235,10 @@ Estos dos módulos forman el núcleo funcional de la gestión de legajos. `rrhh_
 -   **Función**: `ver_legajo()`
 -   **Descripción**: Muestra una vista detallada de toda la información de un empleado, incluyendo sus datos personales, contratos, estudios, documentos, etc.
 -   **Flujo de Datos**:
-    1.  El controlador llama a `legajo_service.get_personal_details()`.
-    2.  El servicio ejecuta el procedimiento `sp_obtener_legajo_completo_por_personal`, que devuelve múltiples conjuntos de resultados (uno por cada sección del legajo).
-    3.  La plantilla `admin/ver_legajo_completo.html` organiza y muestra toda esta información.
+    1.  El controlador llama a `legajo_service.get_personal_details()`, **pasando el `personal_id` y el objeto `current_user`**.
+    2.  El servicio primero obtiene todos los datos del legajo desde el repositorio (usando `sp_obtener_legajo_completo_por_personal`).
+    3.  Luego, **realiza una validación de permisos**, asegurando que el rol del `current_user` (`RRHH`, `AdminLegajos`, o `Sistemas`) esté autorizado para ver el legajo solicitado. Esto actúa como una segunda capa de seguridad además de los decoradores de ruta.
+    4.  La plantilla `admin/ver_legajo_completo.html` organiza y muestra toda esta información.
 
 #### 9.2.4. Gestión de Documentos (Rol: AdminLegajos)
 
@@ -265,12 +273,11 @@ Este módulo es responsable de gestionar la identidad y el acceso de los usuario
 -   **Función**: `login()`
 -   **Descripción**: Presenta el formulario de inicio de sesión y procesa las credenciales del usuario.
 -   **Flujo de Datos**:
-    1.  El usuario envía su nombre de usuario y contraseña a través del `LoginForm`.
+    1.  El usuario envía su nombre de usuario y contraseña a través del `LoginForm`. El formulario ahora incluye una opción "Mantenerme conectado" (`remember_me`).
     2.  El controlador llama a `usuario_service.attempt_login()`.
-    3.  El servicio busca al usuario en la base de datos (usando `sp_obtener_usuario_por_username`) y verifica la contraseña hasheada.
-    4.  Si las credenciales son **incorrectas**, se muestra un mensaje de error y se redirige de vuelta al login.
-    5.  Si las credenciales son **correctas**, el servicio genera un código 2FA, lo guarda en la base de datos (hasheado) y lo envía por correo electrónico al usuario.
-    6.  El ID del usuario se guarda en la sesión (`session['2fa_user_id']`) y se redirige al usuario a la página de verificación 2FA.
+    3.  El servicio busca al usuario y verifica la contraseña.
+    4.  Si las credenciales son correctas, el servicio genera un código 2FA y lo envía por correo.
+    5.  El ID del usuario y el valor de `remember_me` se guardan en la sesión, y se redirige a la página de verificación 2FA.
 
 #### 9.3.2. Verificación en Dos Pasos (2FA)
 
@@ -283,12 +290,23 @@ Este módulo es responsable de gestionar la identidad y el acceso de los usuario
     3.  El servicio compara el código introducido con el hash guardado en la base de datos y verifica que no haya expirado.
     4.  Si el código es **incorrecto**, se muestra un mensaje de error.
     5.  Si el código es **correcto**, se completa el proceso:
-        -   Se actualiza la fecha de `ultimo_login` del usuario (usando `sp_actualizar_ultimo_login`).
-        -   Se inicia la sesión del usuario con la función `login_user()` de Flask-Login.
+        -   Se actualiza la fecha de `ultimo_login`.
+        -   Se inicia la sesión del usuario con `login_user(user, remember=valor_guardado)`. Si la opción "Mantenerme conectado" fue marcada, la sesión será persistente.
         -   Se limpia la sesión de 2FA.
-        -   Se redirige al usuario al dashboard correspondiente a su rol.
+        -   Se redirige al usuario a la ruta raíz (`/`).
 
-#### 9.3.3. Cierre de Sesión
+#### 9.3.3. Enrutamiento Post-Login
+
+-   **Ruta Principal**: `/`
+-   **Función**: `index()`
+-   **Descripción**: Actúa como un enrutador inteligente después de que el usuario ha iniciado sesión.
+-   **Flujo de Datos**:
+    1.  El decorador `@login_required` asegura que solo usuarios autenticados puedan acceder.
+    2.  La función inspecciona el rol del `current_user`.
+    3.  Redirige al usuario al dashboard que le corresponde (`sistemas.dashboard`, `rrhh.inicio_rrhh`, etc.).
+    4.  Esto resuelve el bucle de redirección que ocurría anteriormente y centraliza la lógica de enrutamiento post-login.
+
+#### 9.3.4. Cierre de Sesión
 
 -   **Ruta Principal**: `/logout`
 -   **Función**: `logout()`
@@ -320,6 +338,8 @@ El proyecto cuenta con varios componentes transversales que dan soporte a toda l
 
 -   **`@role_required(*roles)`**: Este es el decorador de seguridad principal de la aplicación. Se coloca encima de una definición de ruta para restringir el acceso solo a los usuarios que posean uno de los roles especificados. Si un usuario no cumple con el requisito, se le muestra un mensaje de error y se le redirige.
 
+-   **`@limiter.limit`**: Proveniente de la extensión `Flask-Limiter`, este decorador se aplica a rutas sensibles (especialmente `login` y `verify_2fa`) para limitar el número de peticiones que una IP puede realizar en un periodo de tiempo. Es la defensa principal contra ataques de fuerza bruta y escaneo de credenciales.
+
 ### 11.2. Conector de Base de Datos (`app/database/connector.py`)
 
 -   Este módulo abstrae la gestión de la conexión a la base de datos. Utiliza la librería `pyodbc` para crear y gestionar un "pool" de conexiones. Su principal responsabilidad es proporcionar una conexión funcional al resto de la aplicación (específicamente a los repositorios) sin que estos necesiten conocer los detalles de la cadena de conexión.
@@ -327,6 +347,10 @@ El proyecto cuenta con varios componentes transversales que dan soporte a toda l
 ### 11.3. Paginación (`app/utils/pagination.py`)
 
 -   **`SimplePagination`**: Una clase de utilidad que encapsula la lógica de la paginación. Recibe la lista de resultados de la página actual, el número de página, los elementos por página y el total de registros. Con esta información, calcula automáticamente si hay una página siguiente/anterior y genera los números de página para los controles de navegación, simplificando enormemente el código en las plantillas.
+
+### 11.4. Filtros de Plantilla Personalizados
+
+-   **`localtime`**: Para solucionar discrepancias de zona horaria entre el servidor de base de datos (que opera en UTC) y los usuarios locales, se ha definido un filtro de plantilla personalizado en `app/__init__.py`. Este filtro, `| localtime`, se puede aplicar a cualquier objeto de fecha y hora en las plantillas Jinja2 para convertirlo a la zona horaria de Perú (UTC-5) antes de mostrarlo, asegurando que los usuarios siempre vean la hora correcta.
 
 ## 12. Estructura del Frontend
 
@@ -345,15 +369,30 @@ La estructura de herencia es clave para evitar la duplicación de código HTML.
 -   **`css/`**: Contiene las hojas de estilo. `prototipo_style.css` es el archivo principal con los estilos personalizados de la aplicación.
 -   **`js/`**: Archivos JavaScript para la interactividad del cliente.
 -   **`img/`**: Logos e imágenes utilizados en la interfaz.
--   **`vendor/`**: Librerías de terceros del lado del cliente, como jQuery y Bootstrap.
 
-## 13. Estrategia de Manejo de Errores
+### 12.3. Seguridad en el Frontend (CSRF)
 
-La aplicación emplea una estrategia de manejo de errores en varias capas:
+Para proteger la aplicación contra ataques de Falsificación de Peticiones en Sitios Cruzados (CSRF), se utiliza la extensión `Flask-WTF`.
+
+-   **Inclusión del Token**: Todos los formularios que realizan una acción de modificación de datos (`POST`, `PUT`, `DELETE`) deben incluir un token CSRF. Esto se logra añadiendo `{{ form.hidden_tag() }}` o un campo oculto `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">`.
+-   **Modales y JavaScript**: Se debe prestar especial atención a los formularios dentro de modales que se envían mediante JavaScript. Es fundamental que el token CSRF esté presente en el formulario del modal. La ausencia de este token resultará en un error `400 Bad Request`.
+
+## 13. Estrategia de Manejo de Errores y Logging
+
+La aplicación emplea una estrategia de manejo de errores robusta y en varias capas para garantizar la estabilidad y facilitar la depuración.
 
 -   **Validación de Formularios**: Los errores de entrada del usuario (campos vacíos, formatos incorrectos) se capturan a través de `Flask-WTF` y se muestran junto al campo correspondiente en el formulario.
--   **Excepciones Esperadas**: Errores de negocio (ej. "DNI ya existe") se capturan en los controladores (`try...except`) y se muestran al usuario a través de mensajes `flash`.
--   **Errores Inesperados**: Cualquier excepción no controlada se captura en un nivel superior. Se registra en la bitácora con la acción 'ERROR' (visible en el panel de Sistemas) y se muestra un mensaje genérico al usuario ("Ocurrió un error inesperado"). Esto evita exponer detalles técnicos sensibles al usuario final.
+
+-   **Excepciones de Negocio**: Errores esperados (ej. "DNI ya existe") se capturan en los controladores (`try...except`) y se muestran al usuario a través de mensajes `flash`, proporcionando feedback claro.
+
+-   **Manejadores de Errores Globales**: La aplicación utiliza un sistema centralizado para manejar errores HTTP comunes, como 404 (No Encontrado) y 500 (Error Interno del Servidor).
+    -   **`app/presentation/routes/error_routes.py`**: Este módulo define manejadores de errores a nivel de aplicación usando `@error_bp.app_errorhandler`.
+    -   **`app/presentation/templates/errors/`**: Contiene plantillas HTML personalizadas (`404.html`, `500.html`) que se muestran al usuario, ofreciendo una experiencia más amigable que las páginas de error por defecto.
+
+-   **Logging Profesional en Archivos**: Para errores inesperados (excepciones no controladas), el sistema está configurado para no exponer detalles técnicos al usuario. En su lugar:
+    1.  Se muestra la página genérica `500.html`.
+    2.  El traceback completo del error se registra en un archivo de log. Esta configuración se realiza en `app/__init__.py` y utiliza `logging.handlers.RotatingFileHandler`.
+    3.  Los logs se guardan en el directorio `logs/app.log`, rotando automáticamente para evitar que el archivo crezca indefinidamente. Esto es crucial para el diagnóstico de problemas en un entorno de producción.
 
 ## 14. Consideraciones para Despliegue en Producción
 
@@ -363,6 +402,6 @@ Para llevar esta aplicación a un entorno de producción, se deben considerar lo
 -   **Variables de Entorno**: El archivo `.env` no debe subirse al repositorio de código. En un servidor de producción, estas variables se deben configurar directamente en el sistema operativo o a través del panel de control del servicio de hosting.
 -   **Modo Debug**: La variable `DEBUG` de Flask debe estar establecida en `False` en producción para evitar la exposición de información sensible de depuración.
 -   **Gestión de Activos Estáticos**: Para un mejor rendimiento, se podría configurar un servidor web como Nginx para servir los archivos estáticos directamente, liberando al servidor de la aplicación de esa tarea.
--   **Seguridad de la Base de Datos**: Asegurarse de que la base de datos no sea accesible públicamente desde internet y que el usuario de la aplicación tenga únicamente los permisos definidos en los roles, siguiendo el principio de mínimo privilegio.
+-   **Seguridad de la Base de Datos**: Asegurarse de que la base de datos no sea accesible públicamente desde internet y que el usuario de la aplicación tenga únicamente los permisos definidos en los roles, siguiendo el principio de mínimo privilegio. Es crucial verificar que el usuario de la BD tenga permisos de `EXECUTE` sobre todos los procedimientos almacenados que la aplicación necesita invocar.
 
 ---

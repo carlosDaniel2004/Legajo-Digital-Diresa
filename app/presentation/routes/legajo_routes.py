@@ -10,7 +10,7 @@ from app.decorators import role_required
 from app.application.forms import PersonalForm, DocumentoForm, FiltroPersonalForm
 from app.domain.models.personal import Personal
 from datetime import datetime
-legajo_bp = Blueprint('legajo', __name__)
+legajo_bp = Blueprint('legajo', __name__, url_prefix='/legajo')
 
 @legajo_bp.route('/api/tipos_documento/por_seccion/<int:id_seccion>')
 @login_required
@@ -48,33 +48,19 @@ def dashboard():
 @login_required
 @role_required('AdministradorLegajos', 'RRHH', 'Sistemas')
 def ver_legajo(personal_id):
-    legajo_service = current_app.config['LEGAJO_SERVICE']
-    legajo_completo = legajo_service.get_personal_details(personal_id)
+    try:
+        legajo_service = current_app.config['LEGAJO_SERVICE']
+        # Seguridad: Pasar el usuario actual al servicio para la validación de permisos (IDOR).
+        legajo_completo = legajo_service.get_personal_details(personal_id, current_user)
+    except PermissionError as e:
+        # Seguridad: Capturar el error de permiso y mostrar un mensaje claro.
+        flash(str(e), 'danger')
+        return redirect(url_for('legajo.listar_personal'))
+    except Exception as e:
+        current_app.logger.error(f"Error inesperado al ver legajo {personal_id}: {e}")
+        flash("Ocurrió un error al cargar el legajo.", "danger")
+        return redirect(url_for('legajo.listar_personal'))
     
-    # ===============================================================
-    # INICIO DE LA CORRECCIÓN: MANEJO DEL TIPO DE DATO INCORRECTO
-    # ===============================================================
-    # Esta sección verifica si recibimos un objeto 'Personal' en lugar del
-    # diccionario esperado. Si es así, lo transforma para evitar el crash.
-    if isinstance(legajo_completo, Personal):
-        # Advertencia: Esto soluciona el error, pero la página podría mostrar
-        # datos incompletos (sin documentos, contratos, etc.) porque la
-        # capa de servicio no los proporcionó.
-        legajo_data = vars(legajo_completo) # Convierte el objeto a un diccionario
-        legajo_completo = {
-            'personal': legajo_data,
-            'documentos': [],
-            'contratos': [],
-            'estudios': [],
-            'capacitaciones': [],
-            'historial_laboral': [],
-            'licencias': []
-        }
-    # ===============================================================
-    # FIN DE LA CORRECCIÓN
-    # ===============================================================
-
-    # Esta línea ahora funcionará correctamente con ambas estructuras de datos
     if not legajo_completo or not legajo_completo.get('personal'):
         flash('El legajo solicitado no existe.', 'danger')
         return redirect(url_for('legajo.listar_personal'))
@@ -204,7 +190,8 @@ def eliminar_personal(personal_id):
 def editar_personal(personal_id):
     legajo_service = current_app.config['LEGAJO_SERVICE']
     
-    legajo_data = legajo_service.get_personal_details(personal_id)
+    # Se pasa current_user para validaciones de seguridad en el servicio
+    legajo_data = legajo_service.get_personal_details(personal_id, current_user)
     if not legajo_data or not legajo_data.get('personal'):
         flash('El legajo que intenta editar no existe.', 'danger')
         return redirect(url_for('legajo.listar_personal'))
@@ -219,7 +206,7 @@ def editar_personal(personal_id):
 
     if form.validate_on_submit():
         try:
-            # legajo_service.update_personal_details(personal_id, form.data, current_user.id)
+            legajo_service.update_personal_details(personal_id, form.data, current_user.id)
             flash('Legajo actualizado exitosamente.', 'success')
             return redirect(url_for('legajo.ver_legajo', personal_id=personal_id))
         except Exception as e:
