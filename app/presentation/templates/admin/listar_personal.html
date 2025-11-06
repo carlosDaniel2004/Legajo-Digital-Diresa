@@ -126,7 +126,7 @@
     </div>
 
     <!-- Modal de Confirmación de Eliminación -->
-    <div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" data-url-template="{{ url_for('legajo.eliminar_personal', personal_id=0) }}">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
@@ -151,23 +151,5 @@
 
 {% block scripts %}
     {{ super() }}
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const confirmDeleteModal = document.getElementById('confirmDeleteModal');
-        if(confirmDeleteModal) {
-            confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
-                const button = event.relatedTarget;
-                const personalId = button.getAttribute('data-personal-id');
-                const personalName = button.getAttribute('data-personal-name');
-                const deleteForm = confirmDeleteModal.querySelector('#deleteForm');
-                
-                confirmDeleteModal.querySelector('#personalNameToDelete').textContent = personalName;
-                
-                // Construye la URL dinámicamente usando un marcador de posición que será reemplazado.
-                const urlTemplate = "{{ url_for('legajo.eliminar_personal', personal_id=12345) }}";
-                deleteForm.action = urlTemplate.replace('12345', personalId);
-            });
-        }
-    });
-    </script>
+    {# El script para el modal ha sido movido a main.js para cumplir con la CSP #}
 {% endblock %}

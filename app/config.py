@@ -50,5 +50,5 @@ class Config:
     # --- CONFIGURACIÓN PARA LA SUBIDA DE ARCHIVOS ---
     ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'docx', 'xlsx'}
     
-    # Define el tamaño máximo del archivo en bytes (ej. 5MB)
-    MAX_CONTENT_LENGTH = 6 * 1024 * 1024
+    # Define el tamaño máximo del archivo en bytes (ej. 8MB)
+    MAX_CONTENT_LENGTH = 8 * 1024 * 1024

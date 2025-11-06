@@ -146,9 +146,13 @@ def subir_documento(personal_id):
             form_data['id_personal'] = personal_id
             legajo_service.upload_document_to_personal(form_data, form.archivo.data, current_user.id)
             flash('Documento subido correctamente.', 'success')
+        except ValueError as ve:
+            # Captura errores de validación específicos del servicio (ej. tamaño de archivo)
+            current_app.logger.warning(f"Error de validación al subir documento para personal {personal_id}: {ve}")
+            flash(str(ve), 'danger')
         except Exception as e:
-            current_app.logger.error(f"Error al subir documento para personal {personal_id}: {e}")
-            flash(f'Ocurrió un error al subir el documento: {e}', 'danger')
+            current_app.logger.error(f"Error inesperado al subir documento para personal {personal_id}: {e}")
+            flash(f'Ocurrió un error inesperado al subir el documento.', 'danger')
     else:
         # Si la validación del formulario falla, registra el error y flashea los mensajes.
         error_str = "; ".join([f"{field}: {', '.join(errors)}" for field, errors in form.errors.items()])

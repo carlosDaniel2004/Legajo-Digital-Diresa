@@ -124,7 +124,7 @@ class LegajoService:
             deleting_user_id,
             'Personal',
             'ELIMINAR (Desactivar)',
-            f"Se desactivó el legajo del personal con DNI {persona['dni']}"
+            f"Se desactivó el legajo del personal con DNI {persona.dni}"
         )
 
     def delete_document_by_id(self, document_id, deleting_user_id):
