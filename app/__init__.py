@@ -92,24 +92,44 @@ def create_app():
     # Seguridad: Inicializar Limiter y Talisman con la app
     limiter.init_app(app)
     
-    # Configuración de la Política de Seguridad de Contenido (CSP)
+    # Configuración de la Política de Seguridad de Contenido (CSP) final y robusta
     csp = {
         'default-src': "'self'",
         'script-src': [
             "'self'",
-            'https://cdn.jsdelivr.net'  # Permitir scripts de Bootstrap
+            'https://cdn.jsdelivr.net',
+            # Hashes para permitir scripts en línea específicos y seguros (necesarios por Bootstrap)
+            "'sha256-SPTyZWPTeFjTbKHjAIiuDI3sMWfD09TRSvdLnxR9P18='",
+            "'sha256-o9r2rou2atPIEqtS7L6iNiMf3jmm9DSP9D4+QBcsjTI='"
         ],
         'style-src': [
             "'self'",
-            'https://cdn.jsdelivr.net'  # Permitir estilos de Bootstrap y Bootstrap Icons
+            'https://cdn.jsdelivr.net',
+            # Permite que los hashes se apliquen a los atributos de estilo en línea.
+            "'unsafe-hashes'",
+            # Hashes para permitir estilos en línea específicos que son inyectados por librerías JS.
+            "'sha256-3Mw0Eo/2Khv82F6lPZB1Dj5PQIuCE1noNKyanN+rmFs='",
+            "'sha256-5gdGQ5tJpJXRNhPg1knhMpFkry/6QByZSurLMIrG85s='",
+            "'sha256-9/dg4qFcr9X961kyB623CNMBzGMuAPi/iinbJCQVf9Y='"
         ],
-        'font-src': 'https://cdn.jsdelivr.net'  # Permitir fuentes de Bootstrap Icons
+        'font-src': 'https://cdn.jsdelivr.net',
+        'img-src': [
+            "'self'",
+            'data:'
+        ],
+        # Permite que el navegador descargue los archivos .map de depuración de Bootstrap
+        'connect-src': [
+            "'self'",
+            'https://cdn.jsdelivr.net'
+        ]
     }
     
     talisman.init_app(
         app, 
         content_security_policy=csp,
-        force_https=not app.config['DEBUG']  # No forzar HTTPS en modo debug
+        # Silencia el aviso de 'browsing-topics'
+        permissions_policy={'browsing-topics': '()'},
+        force_https=not app.config['DEBUG']
     )
 
     # --- FILTRO DE PLANTILLA PARA ZONA HORARIA ---

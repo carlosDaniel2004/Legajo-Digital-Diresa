@@ -7,10 +7,52 @@ import pyodbc
 from flask import Blueprint, jsonify, render_template, redirect, send_file, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from app.decorators import role_required
-from app.application.forms import PersonalForm, DocumentoForm, FiltroPersonalForm
+from app.application.forms import PersonalForm, DocumentoForm, FiltroPersonalForm, BulkUploadForm
 from app.domain.models.personal import Personal
 from datetime import datetime
 legajo_bp = Blueprint('legajo', __name__, url_prefix='/legajo')
+
+@legajo_bp.route('/personal/carga_masiva', methods=['GET', 'POST'])
+@login_required
+@role_required('AdministradorLegajos')
+def carga_masiva_personal():
+    form = BulkUploadForm()
+    if form.validate_on_submit():
+        file_storage = form.excel_file.data
+        try:
+            legajo_service = current_app.config['LEGAJO_SERVICE']
+            resultado = legajo_service.process_bulk_upload(file_storage, current_user.id)
+            
+            flash(f"Proceso de carga masiva completado. Registros exitosos: {resultado['exitosos']}", 'success')
+            if resultado['fallidos'] > 0:
+                # Si hubo errores, se muestran en un mensaje separado.
+                errores_str = "; ".join(resultado['errores'])
+                flash(f"Registros fallidos: {resultado['fallidos']}. Detalles: {errores_str}", 'danger')
+
+            return redirect(url_for('legajo.listar_personal'))
+        except Exception as e:
+            current_app.logger.error(f"Error crítico en carga masiva: {e}")
+            flash(f"Ocurrió un error inesperado al procesar el archivo: {e}", 'danger')
+
+    return render_template('admin/carga_masiva.html', form=form)
+
+@legajo_bp.route('/personal/plantilla_carga_masiva')
+@login_required
+@role_required('AdministradorLegajos')
+def descargar_plantilla_carga_masiva():
+    legajo_service = current_app.config['LEGAJO_SERVICE']
+    # Se obtienen las unidades para las validaciones de datos en Excel.
+    unidades = legajo_service.get_unidades_for_select()
+    
+    excel_stream = legajo_service.generate_bulk_upload_template(unidades)
+    
+    return send_file(
+        excel_stream,
+        download_name="plantilla_carga_masiva_personal.xlsx",
+        as_attachment=True,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 
 @legajo_bp.route('/api/tipos_documento/por_seccion/<int:id_seccion>')
 @login_required

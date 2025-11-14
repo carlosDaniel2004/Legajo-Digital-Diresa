@@ -136,10 +136,13 @@
             <i class="bi bi-cloud-arrow-up-fill me-2"></i>Añadir Documento al Legajo
         </div>
         <div class="card-body">
+            {# Aquí se incluirán los mensajes de error o éxito #}
+            {% include 'components/_alerts.html' %}
+            
             <form id="uploadDocForm" action="{{ url_for('legajo.subir_documento', personal_id=legajo.personal.id_personal) }}" method="POST" enctype="multipart/form-data" novalidate>
                 {{ form_documento.hidden_tag() }}
                 <div class="row">
-                    <div class="col-md-6">{{ render_field(form_documento.id_seccion, id='seccion_select') }}</div>
+                    <div class="col-md-6">{{ render_field(form_documento.id_seccion, id='seccion_select', **{'data-tipos-url': url_for('legajo.api_tipos_documento_por_seccion', id_seccion=0)}) }}</div>
                     <div class="col-md-6">{{ render_field(form_documento.id_tipo, id='tipo_doc_select') }}</div>
                 </div>
                 {{ render_field(form_documento.descripcion) }}
@@ -183,68 +186,5 @@
 
 {% block scripts %}
     {{ super() }}
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const confirmDeleteModal = document.getElementById('confirmDeleteModal');
-        if (confirmDeleteModal) {
-            confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
-                const button = event.relatedTarget;
-                const docId = button.getAttribute('data-doc-id');
-                const docName = button.getAttribute('data-doc-name');
-                const modalTitle = confirmDeleteModal.querySelector('#docNameToDelete');
-                const deleteForm = confirmDeleteModal.querySelector('#deleteDocForm');
-                
-                if (modalTitle) { modalTitle.textContent = docName; }
-                if (deleteForm) { 
-                    const urlTemplate = "{{ url_for('legajo.eliminar_documento', documento_id=12345) }}";
-                    deleteForm.action = urlTemplate.replace('12345', docId);
-                }
-            });
-        }
-
-        const seccionSelect = document.getElementById('seccion_select');
-        const tipoDocSelect = document.getElementById('tipo_doc_select');
-        
-        if (seccionSelect && tipoDocSelect) {
-            const loadTiposDocumento = (seccionId) => {
-                tipoDocSelect.innerHTML = '<option value="0">Cargando...</option>';
-                tipoDocSelect.disabled = true;
-
-                if (seccionId && seccionId !== '0') {
-                    fetch(`/legajos/api/tipos_documento/por_seccion/${seccionId}`)
-                        .then(response => {
-                            if (!response.ok) { throw new Error('Network response was not ok'); }
-                            return response.json();
-                        })
-                        .then(data => {
-                            tipoDocSelect.innerHTML = '<option value="0">-- Seleccione un tipo --</option>';
-                            if (data && data.length > 0) {
-                                data.forEach(tipo => tipoDocSelect.add(new Option(tipo.nombre, tipo.id)));
-                                tipoDocSelect.disabled = false;
-                            } else {
-                                tipoDocSelect.innerHTML = '<option value="0">-- No hay tipos para esta sección --</option>';
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error al cargar tipos de documento:', error);
-                            tipoDocSelect.innerHTML = '<option value="0">-- Error al cargar --</option>';
-                            tipoDocSelect.disabled = false;
-                        });
-                } else {
-                    tipoDocSelect.innerHTML = '<option value="0">-- Seleccione una sección primero --</option>';
-                    tipoDocSelect.disabled = true;
-                }
-            };
-
-            seccionSelect.addEventListener('change', function () { loadTiposDocumento(this.value); });
-
-            if (seccionSelect.value && seccionSelect.value !== '0') {
-                loadTiposDocumento(seccionSelect.value);
-            } else {
-                tipoDocSelect.innerHTML = '<option value="0">-- Seleccione una sección primero --</option>';
-                tipoDocSelect.disabled = true;
-            }
-        }
-    });
-    </script>
+    {# Toda la lógica de JavaScript ha sido movida a /static/js/main.js para cumplir con la CSP #}
 {% endblock %}

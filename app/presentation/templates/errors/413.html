@@ -1,0 +1,30 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Archivo Demasiado Grande{% endblock %}
+
+{% block body_content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="card shadow-lg">
+                <div class="card-body p-5">
+                    <h1 class="display-1 text-warning font-weight-bold">413</h1>
+                    <h2 class="mb-4">Archivo Demasiado Grande</h2>
+                    <p class="lead text-muted mb-4">
+                        El archivo que intentas subir excede el límite de tamaño permitido por el servidor.
+                    </p>
+                    {% if max_size_mb %}
+                    <p class="text-muted">
+                        El tamaño máximo permitido es de <strong>{{ max_size_mb|int }} MB</strong>.
+                    </p>
+                    {% endif %}
+                    <a href="javascript:history.back()" class="btn btn-primary btn-lg mt-3">
+                        <i class="bi bi-arrow-left-circle-fill me-2"></i>
+                        Volver a la página anterior
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,5 +1,5 @@
 # app/presentation/routes/error_routes.py
-from flask import Blueprint, render_template, current_app
+from flask import Blueprint, render_template, current_app, flash, redirect, request, url_for
 
 # Se utiliza un Blueprint para organizar las rutas de manejo de errores.
 error_bp = Blueprint('errors', __name__)
@@ -26,3 +26,20 @@ def internal_error(error):
     # Es crucial registrar el traceback completo para poder diagnosticar el problema.
     current_app.logger.error(f"Error interno del servidor: {error}", exc_info=True)
     return render_template('errors/500.html'), 500
+
+@error_bp.app_errorhandler(413)
+def request_entity_too_large(error):
+    """
+    Manejador para errores 413 (Payload Too Large).
+    
+    Esta función se activa cuando un archivo subido excede el límite de MAX_CONTENT_LENGTH.
+    En lugar de mostrar una página de error, muestra un mensaje flash y redirige
+    a la página anterior.
+    """
+    current_app.logger.warning(f"Se intentó subir un archivo demasiado grande: {error}")
+    max_size_mb = current_app.config.get('MAX_CONTENT_LENGTH', 0) / (1024 * 1024)
+    flash(f"Error: El archivo es demasiado grande. El tamaño máximo permitido es de {max_size_mb:.0f} MB.", 'danger')
+    
+    # Redirige al usuario a la página desde la que vino.
+    # Si no se puede determinar, lo envía a la página principal.
+    return redirect(request.referrer or url_for('index'))

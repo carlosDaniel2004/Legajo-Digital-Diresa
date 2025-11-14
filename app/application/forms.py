@@ -83,3 +83,11 @@ class UserManagementForm(FlaskForm):
     activo = BooleanField('Usuario Activo') 
     
     submit = SubmitField('Guardar Cambios')
+
+class BulkUploadForm(FlaskForm):
+    """Formulario para la subida masiva de personal desde un archivo Excel."""
+    excel_file = FileField('Archivo Excel (.xlsx)', validators=[
+        DataRequired(message="Por favor, seleccione un archivo."),
+        FileAllowed(['xlsx'], '¡Solo se permiten archivos de Excel (.xlsx)!')
+    ])
+    submit = SubmitField('Procesar Archivo')

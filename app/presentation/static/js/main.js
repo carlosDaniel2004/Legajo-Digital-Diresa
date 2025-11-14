@@ -36,4 +36,57 @@ window.addEventListener('DOMContentLoaded', event => {
             }
         });
     }
+
+    // --- LÓGICA PARA LOS MENÚS DESPLEGABLES DEPENDIENTES (SECCIÓN -> TIPO DOCUMENTO) ---
+    const seccionSelect = document.getElementById('seccion_select');
+    const tipoDocSelect = document.getElementById('tipo_doc_select');
+    
+    if (seccionSelect && tipoDocSelect) {
+        const loadTiposDocumento = (seccionId) => {
+            tipoDocSelect.innerHTML = '<option value="0">Cargando...</option>';
+            tipoDocSelect.disabled = true;
+
+            if (seccionId && seccionId !== '0') {
+                const urlTemplate = seccionSelect.getAttribute('data-tipos-url');
+                if (!urlTemplate) {
+                    console.error('El atributo data-tipos-url no se encontró en el select de sección.');
+                    return;
+                }
+                const finalUrl = urlTemplate.replace('/0', `/${seccionId}`);
+
+                fetch(finalUrl)
+                    .then(response => {
+                        if (!response.ok) { throw new Error('La respuesta de la red no fue correcta.'); }
+                        return response.json();
+                    })
+                    .then(data => {
+                        tipoDocSelect.innerHTML = '<option value="0">-- Seleccione un tipo --</option>';
+                        if (data && data.length > 0) {
+                            data.forEach(tipo => tipoDocSelect.add(new Option(tipo.nombre, tipo.id)));
+                            tipoDocSelect.disabled = false;
+                        } else {
+                            tipoDocSelect.innerHTML = '<option value="0">-- No hay tipos para esta sección --</option>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al cargar tipos de documento:', error);
+                        tipoDocSelect.innerHTML = '<option value="0">-- Error al cargar --</option>';
+                        tipoDocSelect.disabled = false;
+                    });
+            } else {
+                tipoDocSelect.innerHTML = '<option value="0">-- Seleccione una sección primero --</option>';
+                tipoDocSelect.disabled = true;
+            }
+        };
+
+        seccionSelect.addEventListener('change', function () { loadTiposDocumento(this.value); });
+
+        // Carga inicial si ya hay una sección seleccionada al cargar la página
+        if (seccionSelect.value && seccionSelect.value !== '0') {
+            loadTiposDocumento(seccionSelect.value);
+        } else {
+            tipoDocSelect.innerHTML = '<option value="0">-- Seleccione una sección primero --</option>';
+            tipoDocSelect.disabled = true;
+        }
+    }
 });

@@ -4,6 +4,7 @@ import hashlib
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 import io
 from flask import current_app
 from datetime import datetime, timedelta
@@ -136,6 +137,124 @@ class LegajoService:
             'ELIMINAR (Lógico)',
             f"Se marcó como eliminado el documento con ID {document_id}"
         )
+
+    def process_bulk_upload(self, file_storage, creating_user_id):
+        """
+        Procesa un archivo Excel para la carga masiva de personal.
+        Valida cada fila y registra a los nuevos empleados.
+        """
+        import openpyxl
+        
+        workbook = openpyxl.load_workbook(file_storage)
+        sheet = workbook.active
+        
+        # Se asume que la primera fila es el encabezado.
+        headers = [cell.value for cell in sheet[1]]
+        
+        # Columnas esperadas en la plantilla.
+        expected_headers = [
+            "DNI", "Nombres", "Apellidos", "Sexo", "FechaNacimiento", "Telefono",
+            "Email", "Direccion", "EstadoCivil", "Nacionalidad", "UnidadAdministrativa",
+            "FechaIngreso"
+        ]
+
+        # Validación simple de encabezados.
+        if headers[:len(expected_headers)] != expected_headers:
+            raise ValueError("El formato del archivo Excel es incorrecto. Las columnas no coinciden con la plantilla.")
+
+        unidades_map = {nombre: id_ for id_, nombre in self._personal_repo.get_unidades_for_select()}
+
+        registros_exitosos = 0
+        registros_fallidos = 0
+        errores = []
+
+        # Itera sobre las filas, omitiendo el encabezado.
+        for row_index, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+            row_data = dict(zip(headers, row))
+            
+            try:
+                # --- Validación de Datos ---
+                if not all([row_data.get('DNI'), row_data.get('Nombres'), row_data.get('Apellidos')]):
+                    raise ValueError("DNI, Nombres y Apellidos son obligatorios.")
+                
+                unidad_nombre = row_data.get('UnidadAdministrativa')
+                if not unidad_nombre or unidad_nombre not in unidades_map:
+                    raise ValueError(f"La unidad administrativa '{unidad_nombre}' no es válida.")
+
+                # --- Mapeo de Datos para el Formulario ---
+                form_data = {
+                    'dni': str(row_data['DNI']),
+                    'nombres': row_data['Nombres'],
+                    'apellidos': row_data['Apellidos'],
+                    'sexo': row_data.get('Sexo'),
+                    'fecha_nacimiento': row_data.get('FechaNacimiento'),
+                    'telefono': row_data.get('Telefono'),
+                    'email': row_data.get('Email'),
+                    'direccion': row_data.get('Direccion'),
+                    'estado_civil': row_data.get('EstadoCivil'),
+                    'nacionalidad': row_data.get('Nacionalidad', 'Peruana'),
+                    'id_unidad': unidades_map[unidad_nombre],
+                    'fecha_ingreso': row_data.get('FechaIngreso')
+                }
+                
+                # Llama al método de registro existente.
+                self.register_new_personal(form_data, creating_user_id)
+                registros_exitosos += 1
+
+            except Exception as e:
+                registros_fallidos += 1
+                errores.append(f"Fila {row_index}: {e}")
+        
+        return {"exitosos": registros_exitosos, "fallidos": registros_fallidos, "errores": errores}
+
+    def generate_bulk_upload_template(self, unidades):
+        """
+        Genera una plantilla de Excel con las columnas necesarias y validaciones de datos.
+        """
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Plantilla de Carga de Personal"
+
+        headers = [
+            "DNI", "Nombres", "Apellidos", "Sexo", "FechaNacimiento", "Telefono",
+            "Email", "Direccion", "EstadoCivil", "Nacionalidad", "UnidadAdministrativa",
+            "FechaIngreso"
+        ]
+        ws.append(headers)
+
+        # Estilo para el encabezado.
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="0D47A1", end_color="0D47A1", fill_type="solid")
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+
+        # --- Validación de Datos en Excel ---
+        # Validación para la columna de Sexo (D).
+        dv_sexo = DataValidation(type="list", formula1='"M,F"', allow_blank=True)
+        dv_sexo.error = "Por favor, ingrese 'M' para Masculino o 'F' para Femenino."
+        dv_sexo.errorTitle = "Valor no válido"
+        ws.add_data_validation(dv_sexo)
+        dv_sexo.add('D2:D1000')
+
+        # Validación para la columna de Unidad Administrativa (K).
+        nombres_unidades = [nombre for _, nombre in unidades]
+        formula_unidades = f'"{",".join(nombres_unidades)}"'
+        dv_unidad = DataValidation(type="list", formula1=formula_unidades, allow_blank=False)
+        dv_unidad.error = "Por favor, seleccione una unidad de la lista."
+        dv_unidad.errorTitle = "Unidad no válida"
+        ws.add_data_validation(dv_unidad)
+        dv_unidad.add('K2:K1000')
+
+        # Ajustar ancho de columnas.
+        for i, header in enumerate(headers, 1):
+            ws.column_dimensions[get_column_letter(i)].width = len(header) + 5
+
+        excel_stream = io.BytesIO()
+        wb.save(excel_stream)
+        excel_stream.seek(0)
+        
+        return excel_stream
 
     # --- MÉTODOS DE REPORTES Y ESTADO ---
     

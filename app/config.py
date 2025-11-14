@@ -51,4 +51,4 @@ class Config:
     ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'docx', 'xlsx'}
     
     # Define el tamaño máximo del archivo en bytes (ej. 8MB)
-    MAX_CONTENT_LENGTH = 8 * 1024 * 1024
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024
