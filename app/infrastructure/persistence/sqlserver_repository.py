@@ -285,6 +285,13 @@ class SqlServerPersonalRepository(IPersonalRepository):
         cursor = conn.cursor()
         cursor.execute("{CALL sp_eliminar_personal(?)}", personal_id)
         conn.commit()
+    
+    def activate_by_id(self, personal_id):
+        """Reactiva un empleado previamente desactivado."""
+        conn = get_db_write()
+        cursor = conn.cursor()
+        cursor.execute("{CALL sp_reactivar_personal(?)}", personal_id)
+        conn.commit()
         
     def find_by_id(self, personal_id):
         conn = get_db_read()

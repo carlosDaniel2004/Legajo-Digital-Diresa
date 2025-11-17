@@ -13,23 +13,65 @@ window.addEventListener('DOMContentLoaded', event => {
 
     // Puedes añadir más lógica de JavaScript global aquí en el futuro.
 
-    // --- LÓGICA PARA EL MODAL DE CONFIRMACIÓN DE ELIMINACIÓN DE PERSONAL ---
+    // --- LÓGICA PARA EL MODAL DE CONFIRMACIÓN DE ELIMINACIÓN DE DOCUMENTOS ---
     const confirmDeleteModal = document.getElementById('confirmDeleteModal');
     if (confirmDeleteModal) {
         confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
+            const docId = button.getAttribute('data-doc-id');
+            const docName = button.getAttribute('data-doc-name');
+            const deleteDocForm = confirmDeleteModal.querySelector('#deleteDocForm');
+            
+            if (docId && deleteDocForm) {
+                // Construir la URL para la eliminación del documento
+                const deleteUrl = '/legajo/documento/' + docId + '/eliminar';
+                deleteDocForm.action = deleteUrl;
+                
+                const nameElement = confirmDeleteModal.querySelector('#docNameToDelete');
+                if (nameElement) {
+                    nameElement.textContent = docName;
+                }
+            }
+        });
+    }
+
+    // --- LÓGICA PARA EL MODAL DE CONFIRMACIÓN DE DESACTIVACIÓN DE PERSONAL ---
+    const confirmDeactivateModal = document.getElementById('confirmDeactivateModal');
+    if (confirmDeactivateModal) {
+        confirmDeactivateModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
             const personalId = button.getAttribute('data-personal-id');
             const personalName = button.getAttribute('data-personal-name');
-            const deleteForm = confirmDeleteModal.querySelector('#deleteForm');
+            const deactivateForm = confirmDeactivateModal.querySelector('#deactivateForm');
             
-            // Leer la plantilla de URL desde el atributo data-* del modal
-            const urlTemplate = confirmDeleteModal.getAttribute('data-url-template');
-            
-            if (personalId && deleteForm && urlTemplate) {
-                const finalUrl = urlTemplate.replace('0', personalId);
-                deleteForm.action = finalUrl;
+            if (personalId && deactivateForm) {
+                // Construir la URL para la desactivación
+                const deactivateUrl = '/legajo/personal/' + personalId + '/eliminar';
+                deactivateForm.action = deactivateUrl;
                 
-                const nameElement = confirmDeleteModal.querySelector('#personalNameToDelete');
+                const nameElement = confirmDeactivateModal.querySelector('#personalNameToDeactivate');
+                if (nameElement) {
+                    nameElement.textContent = personalName;
+                }
+            }
+        });
+    }
+
+    // --- LÓGICA PARA EL MODAL DE CONFIRMACIÓN DE ACTIVACIÓN DE PERSONAL ---
+    const confirmActivateModal = document.getElementById('confirmActivateModal');
+    if (confirmActivateModal) {
+        confirmActivateModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const personalId = button.getAttribute('data-personal-id');
+            const personalName = button.getAttribute('data-personal-name');
+            const activateForm = confirmActivateModal.querySelector('#activateForm');
+            
+            if (personalId && activateForm) {
+                // Construir la URL para la reactivación
+                const activateUrl = '/legajo/personal/' + personalId + '/reactivar';
+                activateForm.action = activateUrl;
+                
+                const nameElement = confirmActivateModal.querySelector('#personalNameToActivate');
                 if (nameElement) {
                     nameElement.textContent = personalName;
                 }

@@ -128,6 +128,19 @@ class LegajoService:
             f"Se desactivó el legajo del personal con DNI {persona.dni}"
         )
 
+    def activate_personal_by_id(self, personal_id, activating_user_id):
+        """Reactiva un legajo de personal y audita la acción."""
+        persona = self._personal_repo.find_by_id(personal_id)
+        if not persona:
+            raise ValueError("La persona que intenta activar no existe.")
+
+        self._personal_repo.activate_by_id(personal_id)
+        self._audit_service.log(
+            activating_user_id,
+            'Personal',
+            'ACTIVAR (Reactivar)',
+            f"Se reactivó el legajo del personal con DNI {persona.dni}"
+        )
     def delete_document_by_id(self, document_id, deleting_user_id):
         """Orquesta la eliminación lógica de un documento y lo audita."""
         self._personal_repo.delete_document_by_id(document_id)

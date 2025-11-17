@@ -230,6 +230,28 @@ def eliminar_personal(personal_id):
         
     return redirect(url_for('legajo.listar_personal'))
 
+@legajo_bp.route('/personal/<int:personal_id>/reactivar', methods=['POST'])
+@login_required
+@role_required('AdministradorLegajos')
+def reactivar_personal(personal_id):
+    legajo_service = current_app.config['LEGAJO_SERVICE']
+    try:
+        # Se intenta reactivar el legajo
+        legajo_service.activate_personal_by_id(personal_id, current_user.id)
+        flash('El legajo ha sido reactivado correctamente.', 'success')
+
+    except ValueError as ve:
+        # Se captura el error específico si la persona no existe
+        current_app.logger.warning(f"Intento de reactivar un legajo no existente ({personal_id}): {ve}")
+        flash(str(ve), 'warning')
+
+    except Exception as e:
+        # Se captura cualquier otro error inesperado
+        current_app.logger.error(f"Error al reactivar legajo {personal_id}: {e}")
+        flash(f'Ocurrió un error al reactivar el legajo: {e}', 'danger')
+        
+    return redirect(url_for('legajo.listar_personal'))
+
 @legajo_bp.route('/personal/<int:personal_id>/editar', methods=['GET', 'POST'])
 @login_required
 @role_required('AdministradorLegajos')

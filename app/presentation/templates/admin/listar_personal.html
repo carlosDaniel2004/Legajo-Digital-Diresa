@@ -72,9 +72,15 @@
                                 <a href="{{ url_for('legajo.ver_legajo', personal_id=persona.id_personal) }}" class="btn btn-sm btn-outline-primary" title="Ver Legajo"><i class="bi bi-eye"></i></a>
                                 {% if current_user.rol == 'AdministradorLegajos' %}
                                 <a href="{{ url_for('legajo.editar_personal', personal_id=persona.id_personal) }}" class="btn btn-sm btn-outline-secondary" title="Editar Legajo"><i class="bi bi-pencil"></i></a>
-                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" data-personal-id="{{ persona.id_personal }}" data-personal-name="{{ persona.nombres }} {{ persona.apellidos }}" title="Desactivar Legajo">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                                {% if persona.activo %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#confirmDeactivateModal" data-personal-id="{{ persona.id_personal }}" data-personal-name="{{ persona.nombres }} {{ persona.apellidos }}" title="Desactivar Legajo">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#confirmActivateModal" data-personal-id="{{ persona.id_personal }}" data-personal-name="{{ persona.nombres }} {{ persona.apellidos }}" title="Activar Legajo">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                {% endif %}
                                 {% endif %}
                             </td>
                         </tr>
@@ -128,23 +134,46 @@
         </div>
     </div>
 
-    <!-- Modal de Confirmación de Eliminación -->
-    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" data-url-template="{{ url_for('legajo.eliminar_personal', personal_id=0) }}">
+    <!-- Modal de Confirmación de Desactivación -->
+    <div class="modal fade" id="confirmDeactivateModal" tabindex="-1" data-url-template="{{ url_for('legajo.eliminar_personal', personal_id=0) }}">
       <div class="modal-dialog">
         <div class="modal-content">
-          <div class="modal-header">
+          <div class="modal-header bg-danger text-white">
             <h5 class="modal-title">Confirmar Desactivación</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            <p>¿Está seguro de que desea desactivar el legajo de <strong id="personalNameToDelete"></strong>?</p>
-            <p class="text-danger small">Esta acción marcará al empleado como inactivo pero no eliminará su historial.</p>
+            <p>¿Está seguro de que desea desactivar el legajo de <strong id="personalNameToDeactivate"></strong>?</p>
+            <p class="text-danger small"><i class="bi bi-exclamation-triangle-fill me-2"></i>Esta acción marcará al empleado como inactivo pero no eliminará su historial.</p>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <form id="deleteForm" method="POST" action="">
+            <form id="deactivateForm" method="POST" action="">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-danger">Sí, desactivar</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Confirmación de Activación -->
+    <div class="modal fade" id="confirmActivateModal" tabindex="-1" data-url-template="{{ url_for('legajo.reactivar_personal', personal_id=0) }}">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title">Confirmar Activación</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p>¿Está seguro de que desea activar nuevamente el legajo de <strong id="personalNameToActivate"></strong>?</p>
+            <p class="text-success small"><i class="bi bi-info-circle-fill me-2"></i>Esta acción marcará al empleado como activo nuevamente.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <form id="activateForm" method="POST" action="">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-success">Sí, activar</button>
             </form>
           </div>
         </div>
