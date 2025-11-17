@@ -57,6 +57,10 @@ class UsuarioService:
         """Obtiene un usuario por su ID."""
         return self._usuario_repo.find_by_id(user_id)
 
+    def get_user_by_id_for_editing(self, user_id):
+        """Obtiene un usuario por su ID para edición."""
+        return self._usuario_repo.find_by_id(user_id)
+
     # ====================================================================
     # >>> MÉTODO AGREGADO: get_all_users_with_roles <<<
     #    Este método corrige el 'AttributeError'.
@@ -76,3 +80,53 @@ class UsuarioService:
             logger.error(f"Error al obtener todos los usuarios con roles desde el repositorio: {e}")
             # Devolvemos una lista vacía para evitar un crash si la BD falla
             return []
+
+    def update_user_role(self, user_id, new_role_id):
+        """Actualiza el rol de un usuario."""
+        try:
+            self._usuario_repo.update_user_role(user_id, new_role_id)
+            logger.info(f"Rol del usuario {user_id} actualizado a {new_role_id}")
+            return "El rol del usuario ha sido actualizado correctamente.", "success"
+        except Exception as e:
+            logger.error(f"Error al actualizar el rol del usuario {user_id}: {e}")
+            return f"Error al actualizar el rol: {e}", "danger"
+
+    def update_user_password(self, user_id, new_password):
+        """Actualiza la contraseña de un usuario."""
+        try:
+            # Generar hash de la contraseña
+            password_hash = generate_password_hash(new_password)
+            self._usuario_repo.update_user_password(user_id, password_hash)
+            logger.info(f"Contraseña del usuario {user_id} actualizada")
+            return "La contraseña del usuario ha sido actualizada correctamente.", "success"
+        except Exception as e:
+            logger.error(f"Error al actualizar la contraseña del usuario {user_id}: {e}")
+            return f"Error al actualizar la contraseña: {e}", "danger"
+
+    def update_username(self, user_id, new_username):
+        """Actualiza el nombre de usuario."""
+        try:
+            self._usuario_repo.update_username(user_id, new_username)
+            logger.info(f"Nombre de usuario del usuario {user_id} actualizado a {new_username}")
+            return "El nombre de usuario ha sido actualizado correctamente.", "success"
+        except ValueError as e:
+            # Error de validación (duplicado, etc.)
+            logger.warning(f"Validación al actualizar usuario {user_id}: {e}")
+            return str(e), "warning"
+        except Exception as e:
+            logger.error(f"Error al actualizar el nombre de usuario {user_id}: {e}")
+            return "Error al actualizar el nombre de usuario. Por favor intenta de nuevo.", "danger"
+
+    def update_email(self, user_id, new_email):
+        """Actualiza el correo electrónico de un usuario."""
+        try:
+            self._usuario_repo.update_email(user_id, new_email)
+            logger.info(f"Correo electrónico del usuario {user_id} actualizado a {new_email}")
+            return "El correo electrónico ha sido actualizado correctamente.", "success"
+        except ValueError as e:
+            # Error de validación (duplicado, etc.)
+            logger.warning(f"Validación al actualizar correo del usuario {user_id}: {e}")
+            return str(e), "warning"
+        except Exception as e:
+            logger.error(f"Error al actualizar el correo electrónico del usuario {user_id}: {e}")
+            return "Error al actualizar el correo electrónico. Por favor intenta de nuevo.", "danger"

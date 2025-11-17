@@ -82,5 +82,17 @@
         </a>
     </div>
 
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('sistemas.documentos_eliminados') }}" class="dashboard-card documents-card">
+            <div class="card-icon text-warning">
+                {# Icono para Documentos Eliminados - Papelera con flecha #}
+                <i class="bi bi-trash-fill"></i>
+            </div>
+            <h4>Gestión de Documentos Eliminados</h4>
+            <p class="card-description">Recupera o elimina permanentemente documentos marcados para borrar.</p>
+            <div class="ingresar-link">ingresar ></div>
+        </a>
+    </div>
+
 </div>
 {% endblock %}

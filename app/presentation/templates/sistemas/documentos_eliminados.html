@@ -1,0 +1,178 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}Gestión de Documentos Eliminados - Sistemas{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <!-- Encabezado -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h3">📋 Gestión de Documentos Eliminados</h1>
+            <p class="text-muted">
+                Aquí puedes ver los documentos marcados como eliminados, recuperarlos o eliminarlos permanentemente.
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('sistemas.dashboard') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Mensajes de Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {% if category == 'danger' %}
+                        <i class="fas fa-exclamation-circle"></i>
+                    {% elif category == 'success' %}
+                        <i class="fas fa-check-circle"></i>
+                    {% elif category == 'warning' %}
+                        <i class="fas fa-exclamation-triangle"></i>
+                    {% elif category == 'info' %}
+                        <i class="fas fa-info-circle"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Tabla de Documentos Eliminados -->
+    {% if documentos %}
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-trash-restore"></i> {{ documentos|length }} Documento(s) Eliminado(s)
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="15%">Documento ID</th>
+                                <th width="20%">Nombre Archivo</th>
+                                <th width="20%">Personal (DNI)</th>
+                                <th width="15%">Tipo</th>
+                                <th width="15%">Fecha Eliminación</th>
+                                <th width="15%">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documentos %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-secondary">#{{ doc.id_documento }}</span>
+                                    </td>
+                                    <td>
+                                        <small>{{ doc.nombre_archivo }}</small>
+                                        {% if doc.descripcion %}
+                                            <br>
+                                            <span class="text-muted text-truncate" title="{{ doc.descripcion }}">
+                                                <em>{{ doc.descripcion|truncate(50) }}</em>
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ doc.nombre_personal or 'N/A' }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ doc.dni or 'Sin DNI' }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ doc.tipo_documento or 'No especificado' }}</span>
+                                    </td>
+                                    <td>
+                                        <small>
+                                            {% if doc.fecha_eliminacion %}
+                                                {{ doc.fecha_eliminacion.strftime('%d/%m/%Y %H:%M') if doc.fecha_eliminacion.strftime else doc.fecha_eliminacion }}
+                                            {% else %}
+                                                <span class="text-muted">Desconocida</span>
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <!-- Botón Recuperar -->
+                                            <form method="POST" 
+                                                  action="{{ url_for('sistemas.recuperar_documento', documento_id=doc.id_documento) }}" 
+                                                  style="display: inline;">
+                                                <button type="submit" 
+                                                        class="btn btn-success btn-sm" 
+                                                        title="Recuperar documento"
+                                                        onclick="return confirm('¿Recuperar este documento?')">
+                                                    <i class="fas fa-undo"></i> Recuperar
+                                                </button>
+                                            </form>
+                                            
+                                            <!-- Botón Eliminar Permanentemente -->
+                                            <form method="POST" 
+                                                  action="{{ url_for('sistemas.eliminar_documento_permanente', documento_id=doc.id_documento) }}" 
+                                                  style="display: inline;">
+                                                <button type="submit" 
+                                                        class="btn btn-danger btn-sm" 
+                                                        title="Eliminar permanentemente (irreversible)"
+                                                        onclick="return confirm('⚠️ ADVERTENCIA: Esto eliminará permanentemente el documento de la base de datos. ¿Continuar?')">
+                                                    <i class="fas fa-times-circle"></i> Eliminar Permanentemente
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <!-- Mensaje cuando no hay documentos eliminados o no está configurado -->
+        <div class="alert alert-warning" role="alert">
+            <h5><i class="fas fa-exclamation-triangle"></i> Configuración Requerida</h5>
+            <p class="mb-2">
+                Para usar la gestión de documentos eliminados, el administrador de base de datos debe ejecutar el script:
+            </p>
+            <code>database_scripts/CREAR_SP_DOCUMENTOS_ELIMINADOS.sql</code>
+            <p class="mb-0 mt-2">
+                <strong>Pasos:</strong>
+            </p>
+            <ol class="mb-0">
+                <li>Abre SQL Server Management Studio</li>
+                <li>Conecta como administrador (sa)</li>
+                <li>Abre el archivo <code>CREAR_SP_DOCUMENTOS_ELIMINADOS.sql</code></li>
+                <li>Ejecuta el script completo</li>
+                <li>Recarga esta página</li>
+            </ol>
+        </div>
+    {% endif %}
+
+    <!-- Información adicional -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="alert alert-light border" role="alert">
+                <h6 class="mb-2">
+                    <i class="fas fa-info-circle text-info"></i> Información
+                </h6>
+                <ul class="mb-0">
+                    <li><strong>Recuperar:</strong> Reactiva el documento para que vuelva a estar disponible.</li>
+                    <li><strong>Eliminar Permanentemente:</strong> Borra definitivamente el documento de la base de datos. Esta acción NO puede deshacerse.</li>
+                    <li>Todos los cambios se registran en la bitácora de auditoría.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table-hover tbody tr:hover {
+        background-color: #f9f9f9;
+    }
+    
+    .btn-group-sm .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+</style>
+{% endblock %}

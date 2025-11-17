@@ -17,11 +17,13 @@ class Usuario(UserMixin):
                  **kwargs):
         
         self.id = id_usuario
+        self.id_usuario = id_usuario  # También guardar como id_usuario para compatibilidad
         self.username = username
         self.id_rol = id_rol           # Campo crucial para el control de acceso
         self.password_hash = password_hash
         self.activo = activo
         self.email = email
+        self.nombre_rol = nombre_rol
         self.rol = nombre_rol
         
         self.two_factor_code = two_factor_code

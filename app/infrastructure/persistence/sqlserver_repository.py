@@ -9,9 +9,11 @@ from app.domain.repositories.i_auditoria_repository import IAuditoriaRepository
 from app.utils.pagination import SimplePagination
 
 def _row_to_dict(cursor, row):
-    # LÍNEA CORREGIDA: Eliminada la indentación inconsistente y caracteres invisibles (U+00A0)
-    if not row: return None
     # Función de utilidad para convertir una fila del cursor a un diccionario
+    if not row:
+        return None
+    if not cursor.description:
+        return None
     return dict(zip([column[0] for column in cursor.description], row))
 
 class SqlServerUsuarioRepository(IUsuarioRepository):
@@ -60,12 +62,19 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
         return Usuario(**row_dict) if row_dict else None
 
     def find_by_username_with_email(self, username):
-        conn = get_db_read()
-        cursor = conn.cursor()
-        query = "{CALL sp_obtener_usuario_por_username(?)}"
-        cursor.execute(query, username)
-        row_dict = _row_to_dict(cursor, cursor.fetchone())
-        return Usuario(**row_dict) if row_dict else None
+        try:
+            conn = get_db_read()
+            cursor = conn.cursor()
+            query = "{CALL sp_obtener_usuario_por_username(?)}"
+            cursor.execute(query, username)
+            row_dict = _row_to_dict(cursor, cursor.fetchone())
+            return Usuario(**row_dict) if row_dict else None
+        except Exception as e:
+            # Loguear el error para debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al obtener usuario por username '{username}': {e}")
+            return None
 
     def set_2fa_code(self, user_id, hashed_code, expiry_date):
         conn = get_db_write()
@@ -84,8 +93,20 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
     def update_password_hash(self, username, new_hash):
         conn = get_db_write()
         cursor = conn.cursor()
-        cursor.execute("{CALL sp_actualizar_password_usuario(?, ?)}", username, new_hash)
+        query = "UPDATE usuarios SET password_hash = ? WHERE username = ?"
+        cursor.execute(query, new_hash, username)
         conn.commit()     
+
+    def update_user_password(self, user_id, new_hash):
+        """Actualiza la contraseña de un usuario por su ID."""
+        conn = get_db_write()
+        cursor = conn.cursor()
+        # Actualizar directamente por ID sin usar SP
+        query = "UPDATE usuarios SET password_hash = ? WHERE id_usuario = ?"
+        cursor.execute(query, new_hash, user_id)
+        if cursor.rowcount == 0:
+            raise ValueError("Usuario no encontrado.")
+        conn.commit()
 
     def update_last_login(self, user_id):
         """Llama a un SP para actualizar la fecha del último login."""
@@ -93,6 +114,77 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
         cursor = conn.cursor()
         cursor.execute("{CALL sp_actualizar_ultimo_login(?)}", user_id)
         conn.commit()
+
+    def update_user_role(self, user_id, new_role_id):
+        """Actualiza el rol de un usuario."""
+        conn = get_db_write()
+        cursor = conn.cursor()
+        cursor.execute("{CALL sp_actualizar_rol_usuario(?, ?)}", user_id, new_role_id)
+        conn.commit()
+
+    def update_username(self, user_id, new_username):
+        """Actualiza el nombre de usuario."""
+        conn = get_db_write()
+        cursor = conn.cursor()
+        
+        # Verificar que el nuevo username no esté duplicado
+        cursor.execute("SELECT COUNT(*) FROM usuarios WHERE username = ? AND id_usuario != ?", new_username, user_id)
+        if cursor.fetchone()[0] > 0:
+            raise ValueError(f"El nombre de usuario '{new_username}' ya está en uso por otro usuario.")
+        
+        # Actualizar directamente en la tabla usuarios
+        cursor.execute("UPDATE usuarios SET username = ? WHERE id_usuario = ?", new_username, user_id)
+        conn.commit()
+
+    def update_email(self, user_id, new_email):
+        """Actualiza el correo electrónico de un usuario."""
+        conn = get_db_write()
+        cursor = conn.cursor()
+        
+        # Verificar que el nuevo email no esté duplicado
+        cursor.execute("SELECT COUNT(*) FROM usuarios WHERE email = ? AND id_usuario != ?", new_email, user_id)
+        if cursor.fetchone()[0] > 0:
+            raise ValueError(f"El correo electrónico '{new_email}' ya está en uso por otro usuario.")
+        
+        # Actualizar directamente en la tabla usuarios
+        cursor.execute("UPDATE usuarios SET email = ? WHERE id_usuario = ?", new_email, user_id)
+        conn.commit()
+
+    def get_all_roles(self):
+        """Obtiene todos los roles disponibles de la base de datos.
+        
+        Si hay problemas de permisos, devuelve los roles hardcodeados.
+        """
+        # Roles estándar del sistema - actualiza aquí si agregas nuevos roles
+        roles_data = [
+            (1, 'Sistemas'),
+            (2, 'AdministradorLegajos'),
+            (3, 'RRHH'),
+        ]
+        
+        try:
+            # Intenta obtener de la BD
+            conn = get_db_write()  # Usar conexión de escritura que tiene más permisos
+            cursor = conn.cursor()
+            cursor.execute("SELECT id_rol, nombre_rol FROM roles ORDER BY nombre_rol")
+            
+            roles_list = []
+            for row in cursor.fetchall():
+                roles_list.append((row[0], row[1]))
+            
+            if roles_list:
+                roles_data = roles_list
+        except:
+            # Si falla, usa los roles hardcodeados
+            pass
+        
+        # Crear objetos con atributos id_rol y nombre_rol
+        roles = []
+        for id_rol, nombre_rol in roles_data:
+            role = type('Role', (), {'id_rol': id_rol, 'nombre_rol': nombre_rol})()
+            roles.append(role)
+        
+        return roles
 
 # --- REPOSITORIO DE PERSONAL ---
 class SqlServerPersonalRepository(IPersonalRepository):
@@ -358,7 +450,145 @@ class SqlServerPersonalRepository(IPersonalRepository):
         cursor.execute(query)
         return [_row_to_dict(cursor, row) for row in cursor.fetchall()]
 
-# --- REPOSITORIO DE AUDITORÍA ---
+    def get_deleted_documents(self):
+        """
+        Obtiene documentos eliminados (activo = 0).
+        Intenta primero con el SP directo, luego con workaround si falla.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        deleted_docs = []
+        conn = get_db_write()
+        cursor = conn.cursor()
+        
+        try:
+            # INTENTO 1: Usar el SP recién creado si existe
+            logger.info("Intentando usar sp_listar_documentos_eliminados...")
+            cursor.execute("{CALL sp_listar_documentos_eliminados}")
+            documents = cursor.fetchall()
+            
+            for row in documents:
+                doc_dict = _row_to_dict(cursor, row)
+                if doc_dict:
+                    deleted_docs.append(doc_dict)
+            
+            logger.info(f"SP sp_listar_documentos_eliminados ejecutado exitosamente. Encontrados {len(deleted_docs)} documentos.")
+            return deleted_docs
+            
+        except Exception as sp_error:
+            logger.warning(f"SP sp_listar_documentos_eliminados no disponible: {sp_error}. Usando workaround...")
+            
+            try:
+                # INTENTO 2: Workaround - Iterar sobre personal
+                logger.info("Iniciando workaround: iterando personal para buscar documentos eliminados...")
+                cursor.execute("SELECT id_personal, CONCAT(apellidos, ', ', nombres) AS nombre_completo, dni FROM personal WHERE activo = 1")
+                all_personal = cursor.fetchall()
+
+                # 2. Iterar por cada persona y obtener sus documentos
+                for person_row in all_personal:
+                    personal_id = person_row[0]
+                    nombre_completo = person_row[1]
+                    dni = person_row[2]
+                    
+                    try:
+                        # Usar el SP existente que lista documentos por persona
+                        cursor.execute("{CALL sp_listar_documentos_por_personal(?)}", personal_id)
+                        documents = cursor.fetchall()
+                        
+                        for row in documents:
+                            doc_dict = _row_to_dict(cursor, row)
+                            # 3. Filtrar en Python para encontrar los eliminados
+                            if doc_dict and doc_dict.get('activo') == 0:
+                                doc_dict['nombre_personal'] = nombre_completo
+                                doc_dict['dni'] = dni
+                                
+                                id_tipo = doc_dict.get('id_tipo')
+                                if id_tipo:
+                                    try:
+                                        cursor.execute("SELECT nombre_tipo FROM tipo_documento WHERE id_tipo = ?", id_tipo)
+                                        tipo_row = cursor.fetchone()
+                                        doc_dict['tipo_documento'] = tipo_row[0] if tipo_row else 'Desconocido'
+                                    except Exception as tipo_error:
+                                        logger.debug(f"Error obteniendo tipo documento {id_tipo}: {tipo_error}")
+                                        doc_dict['tipo_documento'] = 'Desconocido'
+                                else:
+                                    doc_dict['tipo_documento'] = 'N/A'
+                                
+                                deleted_docs.append(doc_dict)
+                    except Exception as person_error:
+                        # Si falla para una persona, continuamos con la siguiente.
+                        logger.debug(f"Error procesando personal {personal_id}: {person_error}")
+                        continue
+                
+                logger.info(f"Workaround finalizado. Se encontraron {len(deleted_docs)} documentos eliminados.")
+                return deleted_docs
+
+            except Exception as workaround_error:
+                logger.critical(f"Error CRÍTICO en workaround de get_deleted_documents: {workaround_error}")
+                return []
+
+
+    def recover_document(self, document_id):
+        """Reactiva un documento marcado como eliminado."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        conn = get_db_write()
+        cursor = conn.cursor()
+        
+        try:
+            # INTENTO 1: Usar SP si existe
+            logger.info(f"Intentando recuperar documento {document_id} usando SP...")
+            cursor.execute("{CALL sp_recuperar_documento(?)}", document_id)
+            conn.commit()
+            logger.info(f"Documento {document_id} recuperado exitosamente via SP.")
+            
+        except Exception as sp_error:
+            logger.warning(f"SP sp_recuperar_documento falló: {sp_error}. Intentando UPDATE directo...")
+            
+            try:
+                # INTENTO 2: Fallback - UPDATE directo
+                cursor.execute(
+                    "UPDATE documentos SET activo = 1, fecha_eliminacion = NULL WHERE id_documento = ?",
+                    document_id
+                )
+                conn.commit()
+                logger.info(f"Documento {document_id} recuperado exitosamente via UPDATE directo.")
+                
+            except Exception as update_error:
+                logger.error(f"Error al recuperar documento {document_id} (ambos métodos fallaron): {update_error}")
+                raise
+
+    def permanently_delete_document(self, document_id):
+        """Elimina permanentemente un documento de la base de datos."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        conn = get_db_write()
+        cursor = conn.cursor()
+        
+        try:
+            # INTENTO 1: Usar SP si existe
+            logger.info(f"Intentando eliminar permanentemente documento {document_id} usando SP...")
+            cursor.execute("{CALL sp_eliminar_documento_permanente(?)}", document_id)
+            conn.commit()
+            logger.info(f"Documento {document_id} eliminado permanentemente via SP.")
+            
+        except Exception as sp_error:
+            logger.warning(f"SP sp_eliminar_documento_permanente falló: {sp_error}. Intentando DELETE directo...")
+            
+            try:
+                # INTENTO 2: Fallback - DELETE directo
+                cursor.execute("DELETE FROM documentos WHERE id_documento = ?", document_id)
+                conn.commit()
+                logger.info(f"Documento {document_id} eliminado permanentemente via DELETE directo.")
+                
+            except Exception as delete_error:
+                logger.error(f"Error al eliminar permanentemente documento {document_id} (ambos métodos fallaron): {delete_error}")
+                raise
+
+
 # Implementación completa y corregida del repositorio de auditoría.
 class SqlServerAuditoriaRepository(IAuditoriaRepository):
     # Llama a un SP para registrar un evento en la bitácora.
@@ -394,6 +624,8 @@ load_dotenv()
 
 def _row_to_dict(cursor, row):
     """Función auxiliar para convertir una fila de base de datos en un diccionario."""
+    if not row or not cursor.description:
+        return None
     return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
 
 class SqlServerBackupRepository:

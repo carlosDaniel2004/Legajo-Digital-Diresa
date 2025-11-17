@@ -1,6 +1,6 @@
 # RUTA: app/presentation/routes/sistemas_routes.py
 
-from flask import Blueprint, render_template, request, current_app, flash, redirect, url_for, send_file
+from flask import Blueprint, render_template, request, current_app, flash, redirect, url_for, send_file, jsonify
 from flask_login import login_required, current_user
 from app.decorators import role_required # Asumimos que este decorador verifica el rol
 from app.application.forms import UserManagementForm # Asumimos un formulario para la gestión de usuarios
@@ -64,7 +64,33 @@ def gestionar_usuarios():
 @role_required('Sistemas')
 def crear_usuario():
     form = UserManagementForm() 
+    
+    # Poblar los roles en el formulario desde el repositorio
+    try:
+        repo = current_app.config['USUARIO_REPOSITORY']
+        roles = repo.get_all_roles()
+        form.id_rol.choices = [(r.id_rol, r.nombre_rol) for r in roles]
+    except Exception as e:
+        current_app.logger.warning(f"Error al cargar roles: {e}")
+    
     if form.validate_on_submit():
+        # Validaciones adicionales para creación
+        if not form.username.data or not form.username.data.strip():
+            form.username.errors = ('El nombre de usuario es requerido.',)
+            return render_template('sistemas/crear_usuario.html', form=form)
+        
+        if not form.email.data or not form.email.data.strip():
+            form.email.errors = ('El correo electrónico es requerido.',)
+            return render_template('sistemas/crear_usuario.html', form=form)
+        
+        if not form.password.data or not form.password.data.strip():
+            form.password.errors = ('La contraseña es requerida.',)
+            return render_template('sistemas/crear_usuario.html', form=form)
+        
+        if not form.id_rol.data or form.id_rol.data == 0:
+            form.id_rol.errors = ('Debe seleccionar un rol.',)
+            return render_template('sistemas/crear_usuario.html', form=form)
+        
         try:
             usuario_service = current_app.config['USUARIO_SERVICE']
             usuario_service.create_user(form.data)
@@ -79,37 +105,69 @@ def crear_usuario():
 @login_required
 @role_required('Sistemas')
 def editar_usuario(user_id):
-    print("--- DEBUG: INTENTANDO ACCEDER A LA FUNCIÓN EDITAR_USUARIO ---")
-    import traceback
     try:
         usuario_service = current_app.config['USUARIO_SERVICE']
-        user = usuario_service.get_user_by_id(user_id)
+        user = usuario_service.get_user_by_id_for_editing(user_id)
         if not user:
             flash('Usuario no encontrado.', 'danger')
             return redirect(url_for('sistemas.gestionar_usuarios'))
         
         form = UserManagementForm(obj=user)
         
-        # Lógica para poblar los roles en el formulario
-        # Asumimos que el servicio puede proveer una lista de roles
-        # roles = usuario_service.get_all_roles() 
-        # form.id_rol.choices = [(r.id, r.nombre) for r in roles]
-
         if form.validate_on_submit():
-            usuario_service.update_user(user_id, form.data)
-            flash('Usuario actualizado con éxito.', 'success')
-            return redirect(url_for('sistemas.gestionar_usuarios'))
+            try:
+                cambios_realizados = []
+                cambios_fallidos = []
+                
+                # Actualizar nombre de usuario si se proporciona
+                if form.nueva_username.data:
+                    resultado, categoria = usuario_service.update_username(user_id, form.nueva_username.data)
+                    if categoria == 'success':
+                        cambios_realizados.append('usuario')
+                    else:
+                        cambios_fallidos.append(resultado)
+                
+                # Actualizar correo si se proporciona
+                if form.nuevo_email.data:
+                    resultado, categoria = usuario_service.update_email(user_id, form.nuevo_email.data)
+                    if categoria == 'success':
+                        cambios_realizados.append('correo')
+                    else:
+                        cambios_fallidos.append(resultado)
+                
+                # Actualizar contraseña si se proporciona
+                if form.nueva_password.data:
+                    resultado, categoria = usuario_service.update_user_password(user_id, form.nueva_password.data)
+                    if categoria == 'success':
+                        cambios_realizados.append('contraseña')
+                    else:
+                        cambios_fallidos.append(resultado)
+                
+                # Mostrar mensajes apropiados
+                if cambios_fallidos:
+                    for error in cambios_fallidos:
+                        flash(error, 'warning')
+                
+                if cambios_realizados:
+                    items = ' y '.join(cambios_realizados)
+                    flash(f'Se actualizaron correctamente: {items}.', 'success')
+                elif not cambios_fallidos:
+                    flash('No se realizaron cambios.', 'info')
+                
+                if cambios_realizados or cambios_fallidos:
+                    return redirect(url_for('sistemas.gestionar_usuarios'))
+                else:
+                    # Si no hay cambios ni errores, vuelve al formulario
+                    pass
+            except Exception as e:
+                current_app.logger.error(f"Error al actualizar usuario {user_id}: {e}")
+                flash(f'Error al actualizar el usuario: {e}', 'danger')
         
         return render_template('sistemas/editar_usuario.html', form=form, user=user)
 
     except Exception as e:
-        # Bloque de depuración para forzar la visibilidad del error
-        error_trace = traceback.format_exc()
-        current_app.logger.error(f"ERROR CRÍTICO EN EDITAR_USUARIO: {e}\n{error_trace}")
-        print(f"!!!!!!!!!!!!!! ERROR DETECTADO EN EDITAR_USUARIO !!!!!!!!!!!!!!")
-        print(error_trace)
-        print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        flash(f"Ocurrió un error grave al cargar la página de edición. Revise la terminal.", 'danger')
+        current_app.logger.error(f"ERROR EN EDITAR_USUARIO: {e}")
+        flash(f"Ocurrió un error al editar el usuario. Por favor intenta de nuevo.", 'danger')
         return redirect(url_for('sistemas.gestionar_usuarios'))
 
 
@@ -249,4 +307,187 @@ def procesar_solicitud(request_id):
     else:
         flash('Acción no válida.', 'danger')
     return redirect(url_for('sistemas.solicitudes_pendientes'))
+
+
+# ------------------------------------------------------------------------
+# 5. GESTIÓN DE DOCUMENTOS ELIMINADOS
+# ------------------------------------------------------------------------
+
+@sistemas_bp.route('/documentos/eliminados')
+@login_required
+@role_required('Sistemas')
+def documentos_eliminados():
+    """
+    Vista para gestionar documentos marcados como eliminados.
+    Permite visualizar, recuperar o eliminar permanentemente.
+    """
+    try:
+        legajo_service = current_app.config['LEGAJO_SERVICE']
+        audit_service = current_app.config['AUDIT_SERVICE']
+        
+        # Obtener documentos eliminados (activo = 0)
+        documentos_eliminados = legajo_service.get_deleted_documents()
+        
+        # Si no hay documentos pero es porque falta el SP, mostrar alerta
+        if not documentos_eliminados:
+            flash(
+                '⚠️ Nota: Para usar esta funcionalidad completamente, el DBA debe ejecutar el script ' +
+                '"CREAR_SP_DOCUMENTOS_ELIMINADOS.sql" en la base de datos. ' +
+                'De momento, la lista está vacía o los permisos no están asignados.',
+                'warning'
+            )
+        
+        # Registrar auditoría
+        audit_service.log(
+            current_user.id,
+            'Documentos',
+            'CONSULTA',
+            'Consultó la lista de documentos eliminados'
+        )
+        
+        return render_template('sistemas/documentos_eliminados.html', documentos=documentos_eliminados)
+    except Exception as e:
+        current_app.logger.error(f"Error al obtener documentos eliminados: {e}")
+        flash(
+            '❌ Error al cargar los documentos eliminados. ' +
+            'Por favor, verifica que el DBA haya ejecutado el script de configuración.',
+            'danger'
+        )
+        return redirect(url_for('sistemas.dashboard'))
+
+
+@sistemas_bp.route('/documentos/recuperar/<int:documento_id>', methods=['POST'])
+@login_required
+@role_required('Sistemas')
+def recuperar_documento(documento_id):
+    """
+    Recupera (reactiva) un documento que fue marcado como eliminado.
+    """
+    try:
+        legajo_service = current_app.config['LEGAJO_SERVICE']
+        audit_service = current_app.config['AUDIT_SERVICE']
+        
+        legajo_service.recover_document(documento_id)
+        
+        audit_service.log(
+            current_user.id,
+            'Documentos',
+            'RECUPERAR',
+            f'Recuperó el documento con ID {documento_id}'
+        )
+        
+        flash('Documento recuperado exitosamente.', 'success')
+    except Exception as e:
+        current_app.logger.error(f"Error al recuperar documento {documento_id}: {e}")
+        flash(f'Error al recuperar el documento: {e}', 'danger')
+    
+    return redirect(url_for('sistemas.documentos_eliminados'))
+
+
+@sistemas_bp.route('/documentos/eliminar-permanente/<int:documento_id>', methods=['POST'])
+@login_required
+@role_required('Sistemas')
+def eliminar_documento_permanente(documento_id):
+    """
+    Elimina permanentemente un documento (elimina el registro de la BD).
+    Acción irreversible.
+    """
+    try:
+        legajo_service = current_app.config['LEGAJO_SERVICE']
+        audit_service = current_app.config['AUDIT_SERVICE']
+        
+        # Obtener información del documento antes de eliminarlo
+        documento = legajo_service.get_document_by_id(documento_id)
+        
+        legajo_service.permanently_delete_document(documento_id)
+        
+        audit_service.log(
+            current_user.id,
+            'Documentos',
+            'ELIMINAR PERMANENTEMENTE',
+            f'Eliminó permanentemente el documento {documento.nombre_archivo} (ID: {documento_id})'
+        )
+        
+        flash('Documento eliminado permanentemente de la base de datos.', 'success')
+    except Exception as e:
+        current_app.logger.error(f"Error al eliminar permanentemente documento {documento_id}: {e}")
+        flash(f'Error al eliminar el documento: {e}', 'danger')
+    
+    return redirect(url_for('sistemas.documentos_eliminados'))
+
+
+@sistemas_bp.route('/documentos/diagnostico')
+@login_required
+@role_required('Sistemas')
+def documentos_eliminados_diagnostico():
+    """
+    Ruta de diagnóstico que prueba varias estrategias de acceso a documentos eliminados.
+    Devuelve un JSON con el resultado de cada intento y mensajes de error si los hay.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    results = {
+        'timestamp': str(__import__('datetime').datetime.now()),
+        'strategies': {}
+    }
+
+    # 1) Intentar SP por get_db_read()
+    try:
+        from app.database.connector import get_db_read
+        conn = get_db_read()
+        cur = conn.cursor()
+        cur.execute("{CALL sp_listar_documentos_eliminados}")
+        rows = cur.fetchall()
+        results['strategies']['sp_via_read'] = {'ok': True, 'count': len(rows), 'error': None}
+        logger.info(f"✓ SP vía get_db_read() funcionó: {len(rows)} documentos")
+    except Exception as e:
+        results['strategies']['sp_via_read'] = {'ok': False, 'count': 0, 'error': str(e)}
+        logger.warning(f"✗ SP vía get_db_read() falló: {e}")
+
+    # 2) Intentar SP por get_db_write()
+    try:
+        from app.database.connector import get_db_write
+        conn = get_db_write()
+        cur = conn.cursor()
+        cur.execute("{CALL sp_listar_documentos_eliminados}")
+        rows = cur.fetchall()
+        results['strategies']['sp_via_write'] = {'ok': True, 'count': len(rows), 'error': None}
+        logger.info(f"✓ SP vía get_db_write() funcionó: {len(rows)} documentos")
+    except Exception as e:
+        results['strategies']['sp_via_write'] = {'ok': False, 'count': 0, 'error': str(e)}
+        logger.warning(f"✗ SP vía get_db_write() falló: {e}")
+
+    # 3) Intentar SELECT directo por get_db_write()
+    try:
+        conn = get_db_write()
+        cur = conn.cursor()
+        cur.execute("SELECT TOP 10 id_documento FROM documentos WHERE activo = 0")
+        rows = cur.fetchall()
+        results['strategies']['select_direct_write'] = {'ok': True, 'count': len(rows), 'error': None}
+        logger.info(f"✓ SELECT directo vía get_db_write() funcionó: {len(rows)} documentos")
+    except Exception as e:
+        results['strategies']['select_direct_write'] = {'ok': False, 'count': 0, 'error': str(e)}
+        logger.warning(f"✗ SELECT directo vía get_db_write() falló: {e}")
+
+    # 4) Intentar el workaround (llamar al método que itera por personal)
+    try:
+        legajo_service = current_app.config['LEGAJO_SERVICE']
+        deleted = legajo_service.get_deleted_documents()
+        results['strategies']['workaround_method'] = {'ok': True, 'count': len(deleted), 'error': None}
+        logger.info(f"✓ Workaround (iteración) funcionó: {len(deleted)} documentos")
+    except Exception as e:
+        results['strategies']['workaround_method'] = {'ok': False, 'count': 0, 'error': str(e)}
+        logger.warning(f"✗ Workaround (iteración) falló: {e}")
+
+    # Registrar auditoría del diagnóstico
+    try:
+        audit_service = current_app.config.get('AUDIT_SERVICE')
+        if audit_service:
+            audit_service.log(current_user.id, 'Documentos', 'DIAGNOSTICO', 'Ejecutó diagnóstico de documentos eliminados')
+    except Exception:
+        pass
+
+    return jsonify(results)
+
 

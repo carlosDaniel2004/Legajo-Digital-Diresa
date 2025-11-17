@@ -9,29 +9,75 @@
 
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Asignar Nuevo Rol</h6>
+            <h6 class="m-0 font-weight-bold text-primary">Información del Usuario</h6>
         </div>
         <div class="card-body">
-            <p><strong>Usuario:</strong> {{ user.username }}</p>
-            <p><strong>Rol Actual:</strong> {{ user.rol }}</p>
+            <p><strong>Usuario Actual:</strong> {{ user.username }}</p>
+            <p><strong>Correo:</strong> {{ user.email }}</p>
+            <p><strong>Rol:</strong> {{ user.nombre_rol }}</p>
             <hr>
-            <form method="POST" action="{{ url_for('sistemas.editar_usuario', user_id=user.id) }}">
+            
+            <form method="POST" action="{{ url_for('sistemas.editar_usuario', user_id=user.id_usuario) }}">
                 {{ form.csrf_token }}
+                
+                <!-- Sección de Nuevo Nombre de Usuario -->
+                <h5 class="mb-3">Cambiar Nombre de Usuario (Opcional)</h5>
+                <p class="text-muted small"><i class="bi bi-info-circle me-2"></i>Deja este campo vacío si no deseas cambiar el nombre de usuario.</p>
                 
                 <div class="form-group row">
                     <div class="col-sm-6 mb-3 mb-sm-0">
-                        {{ render_field(form.id_rol, class="form-control") }}
+                        {{ render_field(form.nueva_username, class="form-control", placeholder="Nuevo nombre de usuario") }}
                     </div>
                 </div>
-
+                
                 <hr>
                 
-                <button type="submit" class="btn btn-primary btn-user">
-                    <i class="fas fa-save mr-2"></i>Actualizar Rol
-                </button>
-                <a href="{{ url_for('sistemas.gestionar_usuarios') }}" class="btn btn-secondary btn-user">
-                    <i class="fas fa-arrow-left mr-2"></i>Cancelar
-                </a>
+                <!-- Sección de Nuevo Correo -->
+                <h5 class="mb-3">Cambiar Correo Electrónico (Opcional)</h5>
+                <p class="text-muted small"><i class="bi bi-info-circle me-2"></i>Deja este campo vacío si no deseas cambiar el correo electrónico.</p>
+                
+                <div class="form-group row">
+                    <div class="col-sm-6 mb-3 mb-sm-0">
+                        {{ render_field(form.nuevo_email, class="form-control", placeholder="Nuevo correo electrónico", type="email") }}
+                        {% if form.nuevo_email.errors %}
+                            <small class="text-danger">{{ form.nuevo_email.errors[0] }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <!-- Sección de Contraseña -->
+                <h5 class="mb-3">Cambiar Contraseña (Opcional)</h5>
+                <p class="text-muted small">
+                    <i class="bi bi-info-circle me-2"></i>Deja estos campos vacíos si no deseas cambiar la contraseña.
+                    <br>
+                    <strong>Nota:</strong> La contraseña no puede ser igual al nombre de usuario.
+                </p>
+                
+                <div class="form-group row">
+                    <div class="col-sm-6 mb-3 mb-sm-0">
+                        {{ render_field(form.nueva_password, class="form-control", placeholder="Nueva contraseña", type="password") }}
+                        {% if form.nueva_password.errors %}
+                            <small class="text-danger">{{ form.nueva_password.errors[0] }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-6">
+                        {{ render_field(form.nueva_confirm, class="form-control", placeholder="Confirmar nueva contraseña", type="password") }}
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <!-- Botones de Acción -->
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-user">
+                        <i class="fas fa-save mr-2"></i>Guardar Cambios
+                    </button>
+                    <a href="{{ url_for('sistemas.gestionar_usuarios') }}" class="btn btn-secondary btn-user">
+                        <i class="fas fa-arrow-left mr-2"></i>Cancelar
+                    </a>
+                </div>
             </form>
         </div>
     </div>

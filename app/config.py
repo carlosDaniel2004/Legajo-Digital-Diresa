@@ -31,9 +31,13 @@ class Config:
     DB_USERNAME_WRITE = os.environ.get('DB_USERNAME_WRITE')
     DB_PASSWORD_WRITE = os.environ.get('DB_PASSWORD_WRITE')
     
-    # Usuario con permisos de solo lectura (para SELECT).
-    DB_USERNAME_READ = os.environ.get('DB_USERNAME_READ')
-    DB_PASSWORD_READ = os.environ.get('DB_PASSWORD_READ')
+    # Usuario administrador de sistemas (con permisos elevados)
+    DB_USERNAME_SYSTEMS_ADMIN = os.environ.get('DB_USERNAME_SYSTEMS_ADMIN')
+    DB_PASSWORD_SYSTEMS_ADMIN = os.environ.get('DB_PASSWORD_SYSTEMS_ADMIN')
+    
+    # Nota: lectura_user no existe en esta BD, se usa DB_USERNAME_WRITE para ambas operaciones
+    DB_USERNAME_READ = os.environ.get('DB_USERNAME_WRITE')
+    DB_PASSWORD_READ = os.environ.get('DB_PASSWORD_WRITE')
 
     # Validación de variables de entorno de la BD
     if not all([DB_SERVER, DB_DATABASE, DB_USERNAME_WRITE, DB_PASSWORD_WRITE, DB_USERNAME_READ, DB_PASSWORD_READ]):

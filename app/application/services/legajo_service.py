@@ -365,3 +365,20 @@ class LegajoService:
             f"Se actualizaron los datos del legajo para el personal ID {personal_id}", 
             form_data
         )
+
+    def get_deleted_documents(self):
+        """Obtiene todos los documentos marcados como eliminados (activo = 0)."""
+        return self._personal_repo.get_deleted_documents()
+
+    def get_document_by_id(self, document_id):
+        """Obtiene los detalles de un documento específico."""
+        return self._personal_repo.find_document_by_id(document_id)
+
+    def recover_document(self, document_id):
+        """Reactiva un documento marcado como eliminado."""
+        self._personal_repo.recover_document(document_id)
+
+    def permanently_delete_document(self, document_id):
+        """Elimina permanentemente un documento de la base de datos."""
+        self._personal_repo.permanently_delete_document(document_id)
+

@@ -54,6 +54,17 @@ class UserManagementService:
         except Exception as e:
             return f"Error al cambiar el estado del usuario: {e}", "danger"
 
+    def update_user_password(self, user_id, new_password):
+        """
+        Actualiza la contraseña de un usuario.
+        """
+        try:
+            hashed_password = generate_password_hash(new_password)
+            self.user_repository.update_user_password(user_id, hashed_password)
+            return "La contraseña del usuario ha sido actualizada correctamente.", "success"
+        except Exception as e:
+            return f"Error al actualizar la contraseña: {e}", "danger"
+
 
     def create_new_user(self, form_data):
         """
