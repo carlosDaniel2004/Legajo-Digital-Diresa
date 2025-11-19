@@ -237,7 +237,7 @@
 
 <!-- Scripts de Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
+<script nonce="{{ csp_nonce() }}">
    document.addEventListener('DOMContentLoaded', function() {
        // Configuración común para todos los gráficos
        Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";

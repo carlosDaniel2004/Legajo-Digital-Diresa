@@ -129,7 +129,8 @@ def create_app():
         content_security_policy=csp,
         # Silencia el aviso de 'browsing-topics'
         permissions_policy={'browsing-topics': '()'},
-        force_https=not app.config['DEBUG']
+        force_https=not app.config['DEBUG'],
+        content_security_policy_nonce_in=['script-src']
     )
 
     # --- FILTRO DE PLANTILLA PARA ZONA HORARIA ---
