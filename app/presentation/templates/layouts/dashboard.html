@@ -2,6 +2,7 @@
 
 {% block body_content %}
 <div class="d-flex" id="wrapper">
+    <!-- Sidebar -->
     <div class="prototipo-sidebar d-flex flex-column">
         <div class="sidebar-user-info">
             <h5 class="user-name">{{ current_user.nombre_completo or current_user.username }}</h5>
@@ -18,7 +19,7 @@
         <div class="sidebar-menu list-group list-group-flush flex-grow-1">
             <div class="menu-heading">Opciones</div>
 
-            {# 🔑 LÓGICA DE URL DINÁMICA: Define la URL y el endpoint activo para 'Inicio' #}
+            {# 🔑 LÓGICA DE URL DINÁMICA #}
             {% set HOME_URL = url_for('index') %}
             {% set active_test = 'index' %}
 
@@ -26,17 +27,14 @@
                 {% set HOME_URL = url_for('sistemas.dashboard') %}
                 {% set active_test = 'sistemas.dashboard' %}
             {% elif current_user.rol == 'RRHH' %}
-                {# Asumimos que RRHH va a su panel principal #}
                 {% set HOME_URL = url_for('rrhh.inicio_rrhh') %}
                 {% set active_test = 'rrhh.inicio_rrhh' %}
             {% elif current_user.rol == 'AdministradorLegajos' %}
-                {# AdministradorLegajos va a su propio dashboard de admin #}
                 {% set HOME_URL = url_for('legajo.dashboard') %}
                 {% set active_test = 'legajo.dashboard' %}
             {% endif %}
 
-            {# 1. ENLACE DE INICIO CORREGIDO #}
-            {# Usa la URL dinámica y la verificación de endpoint para el estado activo #}
+            {# 1. ENLACE DE INICIO #}
             <a href="{{ HOME_URL }}" class="list-group-item 
                 {% if request.endpoint == active_test or request.endpoint == 'main_dashboard' %}active{% endif %}">
                 <i class="bi bi-house-door-fill"></i>Inicio
@@ -101,31 +99,7 @@
             </div>
 
             <div class="header-right-icons">
-                <div class="notification-bell dropdown">
-                    <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="dropdownNotifications" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-bell-fill"></i>
-                        {# Solo muestra el contador si hay notificaciones #}
-                        {% if notifications %}
-                        <span class="badge bg-danger rounded-circle">{{ notifications|length }}</span>
-                        {% endif %}
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end text-small shadow" aria-labelledby="dropdownNotifications">
-                        {# Si hay notificaciones, las lista. Si no, muestra un mensaje. #}
-                        {% if notifications %}
-                            {% for doc in notifications %}
-                            <li><a class="dropdown-item" href="{{ url_for('legajo.ver_legajo', personal_id=doc.id_personal) }}">
-                                <div class="fw-bold">Doc. por vencer: {{ doc.nombre_archivo }}</div>
-                                <div class="small text-muted">{{ doc.apellidos }}, {{ doc.nombres }}</div>
-                                <div class="small text-danger">Vence: {{ doc.fecha_vencimiento.strftime('%d/%m/%Y') }}</div>
-                            </a></li>
-                            {% endfor %}
-                        {% else %}
-                            <li><a class="dropdown-item text-center small text-muted" href="#">No hay notificaciones</a></li>
-                        {% endif %}
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-center small text-muted" href="#">Ver todas las notificaciones</a></li>
-                    </ul>
-                </div>
+                <!-- NOTA: Se eliminó la sección de la campana de notificaciones aquí -->
 
                 <div class="user-dropdown dropdown">
                     <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">

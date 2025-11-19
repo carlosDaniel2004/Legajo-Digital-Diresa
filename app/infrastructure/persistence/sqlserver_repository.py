@@ -21,6 +21,38 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
     # -------------------------------------------------------------
     # MÉTODO PARA LISTAR USUARIOS (Corregido para usar p_obtener_usuarios_para_gestion)
     # -------------------------------------------------------------
+
+    def get_all_users_with_roles(self):
+        """
+        Obtiene todos los usuarios con sus roles.
+        """
+        conn = get_db_read()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("{CALL sp_listar_todos_los_usuarios}")
+            rows = cursor.fetchall()
+            usuarios = []
+            for row in rows:
+                # Mapeo manual de la fila al objeto Usuario
+                # Aseguramos de capturar el email (índice 2 según el SP)
+                usuario = Usuario(
+                    id_usuario=row.id_usuario,
+                    username=row.username,
+                    email=row.email if hasattr(row, 'email') else None, # Capturamos email
+                    id_rol=0, # El ID del rol no viene en este SP, solo el nombre
+                    activo=row.activo
+                )
+                # Asignamos atributos adicionales que no están en el modelo base pero sirven para la vista
+                usuario.nombre_rol = row.nombre_rol
+                usuario.ultimo_login = row.ultimo_login
+                
+                usuarios.append(usuario)
+            return usuarios
+        finally:
+            cursor.close()
+            conn.close()
+
+
     def find_all_users_with_roles(self):
         """
         Obtiene la lista completa de usuarios con sus roles y estados para 
@@ -452,81 +484,58 @@ class SqlServerPersonalRepository(IPersonalRepository):
 
     def get_deleted_documents(self):
         """
-        Obtiene documentos eliminados (activo = 0).
-        Intenta primero con el SP directo, luego con workaround si falla.
+        Obtiene documentos eliminados.
+        Usa print() para depurar por consola y normaliza claves a minúsculas.
         """
-        import logging
-        logger = logging.getLogger(__name__)
         
         deleted_docs = []
         conn = get_db_write()
         cursor = conn.cursor()
         
         try:
-            # INTENTO 1: Usar el SP recién creado si existe
-            logger.info("Intentando usar sp_listar_documentos_eliminados...")
+            # INTENTO 1: Usar el SP
             cursor.execute("{CALL sp_listar_documentos_eliminados}")
             documents = cursor.fetchall()
             
             for row in documents:
-                doc_dict = _row_to_dict(cursor, row)
-                if doc_dict:
+                raw_dict = _row_to_dict(cursor, row)
+                if raw_dict:
+                    # Ver qué claves llegan realmente de la BD
+                    
+
+                    # CONVERTIR A MINÚSCULAS (Solución al problema de tabla vacía)
+                    doc_dict = {k.lower(): v for k, v in raw_dict.items()}
+                    
+                    # Rellenar datos faltantes si es necesario
+                    if 'nombre_personal' not in doc_dict and 'id_personal' in doc_dict:
+                        try:
+                            cursor.execute("SELECT nombres, apellidos, dni FROM personal WHERE id_personal = ?", doc_dict['id_personal'])
+                            p_row = cursor.fetchone()
+                            if p_row:
+                                doc_dict['nombre_personal'] = f"{p_row[1]}, {p_row[0]}"
+                                doc_dict['dni'] = p_row[2]
+                        except:
+                            pass
+                    
+                    # Rellenar tipo si falta
+                    if 'tipo_documento' not in doc_dict and 'id_tipo' in doc_dict:
+                        try:
+                            cursor.execute("SELECT nombre_tipo FROM tipo_documento WHERE id_tipo = ?", doc_dict['id_tipo'])
+                            t_row = cursor.fetchone()
+                            if t_row:
+                                doc_dict['tipo_documento'] = t_row[0]
+                        except:
+                            pass
+
                     deleted_docs.append(doc_dict)
             
-            logger.info(f"SP sp_listar_documentos_eliminados ejecutado exitosamente. Encontrados {len(deleted_docs)} documentos.")
+            
+            
             return deleted_docs
             
-        except Exception as sp_error:
-            logger.warning(f"SP sp_listar_documentos_eliminados no disponible: {sp_error}. Usando workaround...")
+        except Exception as e:
             
-            try:
-                # INTENTO 2: Workaround - Iterar sobre personal
-                logger.info("Iniciando workaround: iterando personal para buscar documentos eliminados...")
-                cursor.execute("SELECT id_personal, CONCAT(apellidos, ', ', nombres) AS nombre_completo, dni FROM personal WHERE activo = 1")
-                all_personal = cursor.fetchall()
-
-                # 2. Iterar por cada persona y obtener sus documentos
-                for person_row in all_personal:
-                    personal_id = person_row[0]
-                    nombre_completo = person_row[1]
-                    dni = person_row[2]
-                    
-                    try:
-                        # Usar el SP existente que lista documentos por persona
-                        cursor.execute("{CALL sp_listar_documentos_por_personal(?)}", personal_id)
-                        documents = cursor.fetchall()
-                        
-                        for row in documents:
-                            doc_dict = _row_to_dict(cursor, row)
-                            # 3. Filtrar en Python para encontrar los eliminados
-                            if doc_dict and doc_dict.get('activo') == 0:
-                                doc_dict['nombre_personal'] = nombre_completo
-                                doc_dict['dni'] = dni
-                                
-                                id_tipo = doc_dict.get('id_tipo')
-                                if id_tipo:
-                                    try:
-                                        cursor.execute("SELECT nombre_tipo FROM tipo_documento WHERE id_tipo = ?", id_tipo)
-                                        tipo_row = cursor.fetchone()
-                                        doc_dict['tipo_documento'] = tipo_row[0] if tipo_row else 'Desconocido'
-                                    except Exception as tipo_error:
-                                        logger.debug(f"Error obteniendo tipo documento {id_tipo}: {tipo_error}")
-                                        doc_dict['tipo_documento'] = 'Desconocido'
-                                else:
-                                    doc_dict['tipo_documento'] = 'N/A'
-                                
-                                deleted_docs.append(doc_dict)
-                    except Exception as person_error:
-                        # Si falla para una persona, continuamos con la siguiente.
-                        logger.debug(f"Error procesando personal {personal_id}: {person_error}")
-                        continue
-                
-                logger.info(f"Workaround finalizado. Se encontraron {len(deleted_docs)} documentos eliminados.")
-                return deleted_docs
-
-            except Exception as workaround_error:
-                logger.critical(f"Error CRÍTICO en workaround de get_deleted_documents: {workaround_error}")
-                return []
+            return [] # Si falla, devolvemos lista vacía por seguridad en esta prueba
 
 
     def recover_document(self, document_id):

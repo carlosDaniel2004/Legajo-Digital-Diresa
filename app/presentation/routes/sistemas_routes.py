@@ -1,17 +1,13 @@
-# RUTA: app/presentation/routes/sistemas_routes.py
-
 from flask import Blueprint, render_template, request, current_app, flash, redirect, url_for, send_file, jsonify
 from flask_login import login_required, current_user
-from app.decorators import role_required # Asumimos que este decorador verifica el rol
-from app.application.forms import UserManagementForm # Asumimos un formulario para la gestión de usuarios
+from app.decorators import role_required
+from app.application.forms import UserManagementForm
 import io
 from datetime import datetime
 
-# --- IMPORTACIÓN ADICIONAL PARA LA NUEVA FUNCIONALIDAD ---
-# Importamos el repositorio que puede hablar con la base de datos para los errores
+# Importamos el repositorio para los errores y backups
 from app.infrastructure.persistence.sqlserver_repository import SqlServerBackupRepository
 
-# Blueprint para las funcionalidades exclusivas del rol de Sistemas.
 sistemas_bp = Blueprint('sistemas', __name__) 
 
 # ------------------------------------------------------------------------
@@ -22,20 +18,12 @@ sistemas_bp = Blueprint('sistemas', __name__)
 @login_required
 @role_required('Sistemas')
 def dashboard():
-    """
-    Controlador principal del Dashboard de Sistemas. 
-    Muestra la vista VISUAL con tarjetas de acceso y monitoreo.
-    """
     return render_template('sistemas/sistemas_inicio.html') 
-
 
 @sistemas_bp.route('/auditoria')
 @login_required
 @role_required('Sistemas')
 def auditoria():
-    """
-    Vista de Auditoría: Muestra la tabla de logs (el 'puro texto').
-    """
     page = request.args.get('page', 1, type=int)
     audit_service = current_app.config['AUDIT_SERVICE']
     pagination = audit_service.get_logs(page, 20)
@@ -44,16 +32,13 @@ def auditoria():
 
 
 # ------------------------------------------------------------------------
-# 2. GESTIÓN DE USUARIOS (Desde la tarjeta 'Gestión de Roles y Usuarios')
+# 2. GESTIÓN DE USUARIOS
 # ------------------------------------------------------------------------
 
 @sistemas_bp.route('/usuarios')
 @login_required
 @role_required('Sistemas')
 def gestionar_usuarios():
-    """
-    Muestra el listado y el control de usuarios del sistema (CRUD).
-    """
     usuario_service = current_app.config['USUARIO_SERVICE']
     usuarios = usuario_service.get_all_users_with_roles() 
     return render_template('sistemas/gestionar_usuarios.html', usuarios=usuarios)
@@ -64,8 +49,6 @@ def gestionar_usuarios():
 @role_required('Sistemas')
 def crear_usuario():
     form = UserManagementForm() 
-    
-    # Poblar los roles en el formulario desde el repositorio
     try:
         repo = current_app.config['USUARIO_REPOSITORY']
         roles = repo.get_all_roles()
@@ -74,19 +57,15 @@ def crear_usuario():
         current_app.logger.warning(f"Error al cargar roles: {e}")
     
     if form.validate_on_submit():
-        # Validaciones adicionales para creación
         if not form.username.data or not form.username.data.strip():
             form.username.errors = ('El nombre de usuario es requerido.',)
             return render_template('sistemas/crear_usuario.html', form=form)
-        
         if not form.email.data or not form.email.data.strip():
             form.email.errors = ('El correo electrónico es requerido.',)
             return render_template('sistemas/crear_usuario.html', form=form)
-        
         if not form.password.data or not form.password.data.strip():
             form.password.errors = ('La contraseña es requerida.',)
             return render_template('sistemas/crear_usuario.html', form=form)
-        
         if not form.id_rol.data or form.id_rol.data == 0:
             form.id_rol.errors = ('Debe seleccionar un rol.',)
             return render_template('sistemas/crear_usuario.html', form=form)
@@ -119,7 +98,6 @@ def editar_usuario(user_id):
                 cambios_realizados = []
                 cambios_fallidos = []
                 
-                # Actualizar nombre de usuario si se proporciona
                 if form.nueva_username.data:
                     resultado, categoria = usuario_service.update_username(user_id, form.nueva_username.data)
                     if categoria == 'success':
@@ -127,7 +105,6 @@ def editar_usuario(user_id):
                     else:
                         cambios_fallidos.append(resultado)
                 
-                # Actualizar correo si se proporciona
                 if form.nuevo_email.data:
                     resultado, categoria = usuario_service.update_email(user_id, form.nuevo_email.data)
                     if categoria == 'success':
@@ -135,7 +112,6 @@ def editar_usuario(user_id):
                     else:
                         cambios_fallidos.append(resultado)
                 
-                # Actualizar contraseña si se proporciona
                 if form.nueva_password.data:
                     resultado, categoria = usuario_service.update_user_password(user_id, form.nueva_password.data)
                     if categoria == 'success':
@@ -143,7 +119,6 @@ def editar_usuario(user_id):
                     else:
                         cambios_fallidos.append(resultado)
                 
-                # Mostrar mensajes apropiados
                 if cambios_fallidos:
                     for error in cambios_fallidos:
                         flash(error, 'warning')
@@ -156,9 +131,6 @@ def editar_usuario(user_id):
                 
                 if cambios_realizados or cambios_fallidos:
                     return redirect(url_for('sistemas.gestionar_usuarios'))
-                else:
-                    # Si no hay cambios ni errores, vuelve al formulario
-                    pass
             except Exception as e:
                 current_app.logger.error(f"Error al actualizar usuario {user_id}: {e}")
                 flash(f'Error al actualizar el usuario: {e}', 'danger')
@@ -186,7 +158,7 @@ def reset_password(user_id):
 
 
 # ------------------------------------------------------------------------
-# 3. MANTENIMIENTO TÉCNICO Y BACKUPS (Desde la tarjeta 'Monitoreo')
+# 3. MANTENIMIENTO TÉCNICO Y BACKUPS
 # ------------------------------------------------------------------------
 
 @sistemas_bp.route('/mantenimiento/backups')
@@ -222,57 +194,39 @@ def run_backup():
 def estado_servidor():
     return render_template('sistemas/estado_servidor.html')
 
-# --- MODIFICACIÓN: RUTA DE ERRORES CON LÓGICA REAL ---
 @sistemas_bp.route('/errores')
 @login_required
 @role_required('Sistemas')
 def errores():
-    """
-    Vista para ver el registro de errores. Ahora obtiene los datos reales de la BD.
-    """
     try:
-        # 1. Crea una instancia del repositorio para hablar con la BD
         repo = SqlServerBackupRepository()
-        # 2. Llama a la función para obtener la lista de errores
         lista_de_errores = repo.obtener_historial_errores()
-        # 3. Pasa la lista a la plantilla HTML
         return render_template('sistemas/registro_errores.html', errores=lista_de_errores)
     except Exception as e:
-        # Si algo falla al obtener los errores, muestra un mensaje
         current_app.logger.error(f"No se pudo cargar el historial de errores: {e}")
         flash(f"No se pudo cargar el historial de errores: {e}", "danger")
         return render_template('sistemas/registro_errores.html', errores=[])
 
-# --- NUEVA RUTA PARA GENERAR UN ERROR DE PRUEBA ---
 @sistemas_bp.route('/test-error')
 @login_required
 @role_required('Sistemas')
 def generar_error_prueba():
-    """
-    Visita esta URL para forzar un error y que se guarde en la bitácora.
-    """
     repo = SqlServerBackupRepository()
     try:
-        # Forzamos un error común (división por cero) para probar
         resultado = 1 / 0
     except Exception as e:
-        # Obtenemos el ID del usuario actual para registrar quién causó el error
         usuario_id = current_user.id if current_user.is_authenticated else None
-        
-        # Usamos la función del repositorio para registrar el error en la base de datos
         repo.registrar_error(
             modulo='sistemas.test_error', 
             descripcion=f"Error de prueba forzado: {str(e)}", 
             usuario_id=usuario_id
         )
         flash('Se ha generado y registrado un error de prueba en la bitácora.', 'info')
-        
-    # Redirigimos de vuelta a la página de errores para ver el resultado
     return redirect(url_for('sistemas.errores'))
 
 
 # ------------------------------------------------------------------------
-# 4. REPORTES TÉCNICOS/AVANZADOS
+# 4. REPORTES Y SOLICITUDES
 # ------------------------------------------------------------------------
 
 @sistemas_bp.route('/reportes')
@@ -281,10 +235,6 @@ def generar_error_prueba():
 def reportes():
     return render_template('sistemas/reportes.html')
 
-
-# ------------------------------------------------------------------------
-# 5. SOLICITUDES PENDIENTES
-# ------------------------------------------------------------------------
 
 @sistemas_bp.route('/solicitudes')
 @login_required
@@ -299,7 +249,7 @@ def solicitudes_pendientes():
 @login_required
 @role_required('Sistemas')
 def procesar_solicitud(request_id):
-    action = request.form.get('action') # 'aprobar' o 'rechazar'
+    action = request.form.get('action')
     if action in ['aprobar', 'rechazar']:
         solicitud_service = current_app.config['SOLICITUDES_SERVICE']
         solicitud_service.process_request(request_id, action)
@@ -319,25 +269,18 @@ def procesar_solicitud(request_id):
 def documentos_eliminados():
     """
     Vista para gestionar documentos marcados como eliminados.
-    Permite visualizar, recuperar o eliminar permanentemente.
     """
     try:
         legajo_service = current_app.config['LEGAJO_SERVICE']
         audit_service = current_app.config['AUDIT_SERVICE']
         
-        # Obtener documentos eliminados (activo = 0)
-        documentos_eliminados = legajo_service.get_deleted_documents()
+        # 1. OBTENER DATOS CRUDOS
+        raw_docs = legajo_service.get_deleted_documents()
         
-        # Si no hay documentos pero es porque falta el SP, mostrar alerta
-        if not documentos_eliminados:
-            flash(
-                '⚠️ Nota: Para usar esta funcionalidad completamente, el DBA debe ejecutar el script ' +
-                '"CREAR_SP_DOCUMENTOS_ELIMINADOS.sql" en la base de datos. ' +
-                'De momento, la lista está vacía o los permisos no están asignados.',
-                'warning'
-            )
+        # 2. CONVERSIÓN EXPLÍCITA A DICCIONARIOS
+        # Convertimos cada fila (Row) a un diccionario de Python puro.
+        documentos_lista = [dict(row) for row in raw_docs] if raw_docs else []
         
-        # Registrar auditoría
         audit_service.log(
             current_user.id,
             'Documentos',
@@ -345,12 +288,13 @@ def documentos_eliminados():
             'Consultó la lista de documentos eliminados'
         )
         
-        return render_template('sistemas/documentos_eliminados.html', documentos=documentos_eliminados)
+        # 3. Enviar la lista al template
+        return render_template('sistemas/documentos_eliminados.html', documentos=documentos_lista)
+
     except Exception as e:
         current_app.logger.error(f"Error al obtener documentos eliminados: {e}")
         flash(
-            '❌ Error al cargar los documentos eliminados. ' +
-            'Por favor, verifica que el DBA haya ejecutado el script de configuración.',
+            '❌ Error al cargar los documentos eliminados.',
             'danger'
         )
         return redirect(url_for('sistemas.dashboard'))
@@ -360,9 +304,6 @@ def documentos_eliminados():
 @login_required
 @role_required('Sistemas')
 def recuperar_documento(documento_id):
-    """
-    Recupera (reactiva) un documento que fue marcado como eliminado.
-    """
     try:
         legajo_service = current_app.config['LEGAJO_SERVICE']
         audit_service = current_app.config['AUDIT_SERVICE']
@@ -375,7 +316,6 @@ def recuperar_documento(documento_id):
             'RECUPERAR',
             f'Recuperó el documento con ID {documento_id}'
         )
-        
         flash('Documento recuperado exitosamente.', 'success')
     except Exception as e:
         current_app.logger.error(f"Error al recuperar documento {documento_id}: {e}")
@@ -388,16 +328,9 @@ def recuperar_documento(documento_id):
 @login_required
 @role_required('Sistemas')
 def eliminar_documento_permanente(documento_id):
-    """
-    Elimina permanentemente un documento (elimina el registro de la BD).
-    Acción irreversible.
-    """
     try:
         legajo_service = current_app.config['LEGAJO_SERVICE']
         audit_service = current_app.config['AUDIT_SERVICE']
-        
-        # Obtener información del documento antes de eliminarlo
-        documento = legajo_service.get_document_by_id(documento_id)
         
         legajo_service.permanently_delete_document(documento_id)
         
@@ -405,9 +338,8 @@ def eliminar_documento_permanente(documento_id):
             current_user.id,
             'Documentos',
             'ELIMINAR PERMANENTEMENTE',
-            f'Eliminó permanentemente el documento {documento.nombre_archivo} (ID: {documento_id})'
+            f'Eliminó permanentemente el documento ID: {documento_id}'
         )
-        
         flash('Documento eliminado permanentemente de la base de datos.', 'success')
     except Exception as e:
         current_app.logger.error(f"Error al eliminar permanentemente documento {documento_id}: {e}")
@@ -415,79 +347,18 @@ def eliminar_documento_permanente(documento_id):
     
     return redirect(url_for('sistemas.documentos_eliminados'))
 
-
 @sistemas_bp.route('/documentos/diagnostico')
 @login_required
 @role_required('Sistemas')
 def documentos_eliminados_diagnostico():
-    """
-    Ruta de diagnóstico que prueba varias estrategias de acceso a documentos eliminados.
-    Devuelve un JSON con el resultado de cada intento y mensajes de error si los hay.
-    """
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    results = {
-        'timestamp': str(__import__('datetime').datetime.now()),
-        'strategies': {}
-    }
-
-    # 1) Intentar SP por get_db_read()
-    try:
-        from app.database.connector import get_db_read
-        conn = get_db_read()
-        cur = conn.cursor()
-        cur.execute("{CALL sp_listar_documentos_eliminados}")
-        rows = cur.fetchall()
-        results['strategies']['sp_via_read'] = {'ok': True, 'count': len(rows), 'error': None}
-        logger.info(f"✓ SP vía get_db_read() funcionó: {len(rows)} documentos")
-    except Exception as e:
-        results['strategies']['sp_via_read'] = {'ok': False, 'count': 0, 'error': str(e)}
-        logger.warning(f"✗ SP vía get_db_read() falló: {e}")
-
-    # 2) Intentar SP por get_db_write()
-    try:
-        from app.database.connector import get_db_write
-        conn = get_db_write()
-        cur = conn.cursor()
-        cur.execute("{CALL sp_listar_documentos_eliminados}")
-        rows = cur.fetchall()
-        results['strategies']['sp_via_write'] = {'ok': True, 'count': len(rows), 'error': None}
-        logger.info(f"✓ SP vía get_db_write() funcionó: {len(rows)} documentos")
-    except Exception as e:
-        results['strategies']['sp_via_write'] = {'ok': False, 'count': 0, 'error': str(e)}
-        logger.warning(f"✗ SP vía get_db_write() falló: {e}")
-
-    # 3) Intentar SELECT directo por get_db_write()
-    try:
-        conn = get_db_write()
-        cur = conn.cursor()
-        cur.execute("SELECT TOP 10 id_documento FROM documentos WHERE activo = 0")
-        rows = cur.fetchall()
-        results['strategies']['select_direct_write'] = {'ok': True, 'count': len(rows), 'error': None}
-        logger.info(f"✓ SELECT directo vía get_db_write() funcionó: {len(rows)} documentos")
-    except Exception as e:
-        results['strategies']['select_direct_write'] = {'ok': False, 'count': 0, 'error': str(e)}
-        logger.warning(f"✗ SELECT directo vía get_db_write() falló: {e}")
-
-    # 4) Intentar el workaround (llamar al método que itera por personal)
+    results = {'timestamp': str(datetime.now()), 'status': 'running'}
     try:
         legajo_service = current_app.config['LEGAJO_SERVICE']
-        deleted = legajo_service.get_deleted_documents()
-        results['strategies']['workaround_method'] = {'ok': True, 'count': len(deleted), 'error': None}
-        logger.info(f"✓ Workaround (iteración) funcionó: {len(deleted)} documentos")
+        docs = list(legajo_service.get_deleted_documents())
+        results['count'] = len(docs)
+        results['first_item'] = str(docs[0]) if docs else "None"
+        results['status'] = 'success'
     except Exception as e:
-        results['strategies']['workaround_method'] = {'ok': False, 'count': 0, 'error': str(e)}
-        logger.warning(f"✗ Workaround (iteración) falló: {e}")
-
-    # Registrar auditoría del diagnóstico
-    try:
-        audit_service = current_app.config.get('AUDIT_SERVICE')
-        if audit_service:
-            audit_service.log(current_user.id, 'Documentos', 'DIAGNOSTICO', 'Ejecutó diagnóstico de documentos eliminados')
-    except Exception:
-        pass
-
+        results['status'] = 'error'
+        results['error'] = str(e)
     return jsonify(results)
-
-
