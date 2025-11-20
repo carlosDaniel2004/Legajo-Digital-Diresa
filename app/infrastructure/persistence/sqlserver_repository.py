@@ -364,6 +364,26 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
         cursor.execute("{CALL sp_actualizar_ultimo_login(?)}", user_id)
         conn.commit()
 
+    def deactivate_user(self, user_id):
+        """Desactiva un usuario por su ID."""
+        conn = get_db_write()
+        cursor = conn.cursor()
+        query = "UPDATE usuarios SET activo = 0 WHERE id_usuario = ?"
+        cursor.execute(query, user_id)
+        if cursor.rowcount == 0:
+            raise ValueError("Usuario no encontrado.")
+        conn.commit()
+
+    def activate_user(self, user_id):
+        """Activa un usuario por su ID."""
+        conn = get_db_write()
+        cursor = conn.cursor()
+        query = "UPDATE usuarios SET activo = 1 WHERE id_usuario = ?"
+        cursor.execute(query, user_id)
+        if cursor.rowcount == 0:
+            raise ValueError("Usuario no encontrado.")
+        conn.commit()
+
     def update_user_role(self, user_id, new_role_id):
         """Actualiza el rol de un usuario."""
         conn = get_db_write()

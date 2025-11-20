@@ -10,7 +10,7 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 # Seguridad: Aplicar un límite de intentos para prevenir ataques de fuerza bruta.
-@limiter.limit("10 per minute")
+@limiter.limit("20 per minute")  # Aumentado de 10 a 20 para desarrollo
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('index')) # Asumimos que 'index' maneja la redirección post-login si ya está autenticado

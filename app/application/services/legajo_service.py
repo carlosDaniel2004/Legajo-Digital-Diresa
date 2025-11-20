@@ -13,9 +13,10 @@ from datetime import datetime, timedelta
 # Define el servicio que contiene la lógica de negocio para los legajos.
 class LegajoService:
     # El constructor inyecta las dependencias del repositorio de personal y el servicio de auditoría.
-    def __init__(self, personal_repository, audit_service):
+    def __init__(self, personal_repository, audit_service, usuario_service=None):
         self._personal_repo = personal_repository
         self._audit_service = audit_service
+        self._usuario_service = usuario_service
 
     # --- MÉTODOS DE CONSULTA (GETTERS) ---
 
@@ -115,12 +116,35 @@ class LegajoService:
         )
 
     def delete_personal_by_id(self, personal_id, deleting_user_id):
-        """Desactiva un legajo de personal y audita la acción."""
+        """Desactiva un legajo de personal, su usuario asociado (si existe), y audita la acción."""
         persona = self._personal_repo.find_by_id(personal_id)
         if not persona:
             raise ValueError("La persona que intenta eliminar no existe.")
 
         self._personal_repo.delete_by_id(personal_id)
+        
+        # Si existe un usuario asociado a este personal, desactivarlo también
+        if self._usuario_service:
+            try:
+                # Buscar usuario por DNI o email
+                usuario = self._usuario_service._usuario_repo.find_by_email(persona.email) if hasattr(persona, 'email') and persona.email else None
+                if usuario:
+                    self._usuario_service._usuario_repo.deactivate_user(usuario.id)
+                    self._audit_service.log(
+                        deleting_user_id,
+                        'Usuario',
+                        'DESACTIVAR (Cascada)',
+                        f"Usuario asociado a personal DNI {persona.dni} fue desactivado automáticamente"
+                    )
+            except Exception as e:
+                # Log del error pero no detiene la desactivación del personal
+                self._audit_service.log(
+                    deleting_user_id,
+                    'Usuario',
+                    'ERROR_DESACTIVACION',
+                    f"Error al desactivar usuario de personal DNI {persona.dni}: {str(e)}"
+                )
+        
         self._audit_service.log(
             deleting_user_id,
             'Personal',
@@ -129,12 +153,35 @@ class LegajoService:
         )
 
     def activate_personal_by_id(self, personal_id, activating_user_id):
-        """Reactiva un legajo de personal y audita la acción."""
+        """Reactiva un legajo de personal, su usuario asociado (si existe), y audita la acción."""
         persona = self._personal_repo.find_by_id(personal_id)
         if not persona:
             raise ValueError("La persona que intenta activar no existe.")
 
         self._personal_repo.activate_by_id(personal_id)
+        
+        # Si existe un usuario asociado a este personal, reactivarlo también
+        if self._usuario_service:
+            try:
+                # Buscar usuario por DNI o email
+                usuario = self._usuario_service._usuario_repo.find_by_email(persona.email) if hasattr(persona, 'email') and persona.email else None
+                if usuario:
+                    self._usuario_service._usuario_repo.activate_user(usuario.id)
+                    self._audit_service.log(
+                        activating_user_id,
+                        'Usuario',
+                        'ACTIVAR (Cascada)',
+                        f"Usuario asociado a personal DNI {persona.dni} fue reactivado automáticamente"
+                    )
+            except Exception as e:
+                # Log del error pero no detiene la reactivación del personal
+                self._audit_service.log(
+                    activating_user_id,
+                    'Usuario',
+                    'ERROR_REACTIVACION',
+                    f"Error al reactivar usuario de personal DNI {persona.dni}: {str(e)}"
+                )
+        
         self._audit_service.log(
             activating_user_id,
             'Personal',

@@ -166,7 +166,7 @@ def create_app():
         
         app.config['USUARIO_SERVICE'] = UsuarioService(usuario_repo, email_service)
         app.config['AUDIT_SERVICE'] = audit_service
-        app.config['LEGAJO_SERVICE'] = LegajoService(personal_repo, audit_service)
+        app.config['LEGAJO_SERVICE'] = LegajoService(personal_repo, audit_service, app.config['USUARIO_SERVICE'])
         app.config['MONITORING_SERVICE'] = MonitoringService(personal_repo)
 
         # Seguridad: Mover la importación de blueprints aquí para evitar importaciones circulares
@@ -185,9 +185,22 @@ def create_app():
 
         @app.route('/')
         def index():
-            # Redirigir directamente a login sin verificar autenticación
-            # para evitar problemas con current_user en primer acceso
-            return redirect(url_for('auth.login'))
+            # Si no está autenticado, redirige a login
+            if not current_user.is_authenticated:
+                return redirect(url_for('auth.login'))
+            
+            # Si está autenticado, redirige según su rol
+            if current_user.rol == 'Sistemas':
+                return redirect(url_for('sistemas.dashboard'))
+            elif current_user.rol == 'RRHH':
+                return redirect(url_for('rrhh.inicio_rrhh'))
+            elif current_user.rol == 'AdministradorLegajos':
+                return redirect(url_for('legajo.dashboard'))
+            else:
+                # Sin rol reconocido, desloguea por seguridad
+                logout_user()
+                flash("Su rol de usuario no tiene una página de inicio asignada.", "warning")
+                return redirect(url_for('auth.login'))
 
         @app.route('/health')
         def health():

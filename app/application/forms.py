@@ -139,10 +139,15 @@ class PersonalForm(FlaskForm):
         Length(max=200, message="La dirección no debe exceder 200 caracteres.")
     ])
     
-    estado_civil = StringField('Estado Civil', validators=[
-        Optional(),
-        Length(max=20, message="El estado civil no debe exceder 20 caracteres.")
-    ])
+    estado_civil = SelectField('Estado Civil', 
+                              choices=[
+                                  ('', '-- Selecciona un estado civil --'),
+                                  ('Soltero', 'Soltero'),
+                                  ('Casado', 'Casado'),
+                                  ('Divorciado', 'Divorciado'),
+                                  ('Viudo', 'Viudo')
+                              ],
+                              validators=[Optional()])
     
     nacionalidad = StringField('Nacionalidad', validators=[
         DataRequired(message="La nacionalidad es obligatoria."),
