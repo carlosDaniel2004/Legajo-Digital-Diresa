@@ -143,3 +143,68 @@ class UsuarioService:
         except Exception as e:
             logger.error(f"Error al actualizar el correo electrónico del usuario {user_id}: {e}")
             return "Error al actualizar el correo electrónico. Por favor intenta de nuevo.", "danger"
+
+    def create_user(self, user_data):
+        """
+        Crea un nuevo usuario en el sistema con validaciones.
+        
+        Args:
+            user_data: Diccionario con los datos del usuario (username, email, password, id_rol)
+        
+        Returns:
+            Tupla (mensaje, tipo_flash)
+        """
+        try:
+            # Extraer datos del formulario
+            username = user_data.get('username', '').strip()
+            email = user_data.get('email', '').strip()
+            password = user_data.get('password', '').strip()
+            id_rol = user_data.get('id_rol')
+            
+            # Validaciones básicas
+            if not username or not email or not password or not id_rol:
+                return "Todos los campos son obligatorios", "warning"
+            
+            if len(username) < 3:
+                return "El nombre de usuario debe tener al menos 3 caracteres", "warning"
+            
+            if len(password) < 8:
+                return "La contraseña debe tener al menos 8 caracteres", "warning"
+            
+            # Verificar que el username no exista
+            existing_user = self._usuario_repo.find_by_username(username)
+            if existing_user:
+                return f"El nombre de usuario '{username}' ya existe en el sistema", "warning"
+            
+            # Verificar que el email no exista
+            existing_email = self._usuario_repo.find_by_email(email)
+            if existing_email:
+                return f"El correo electrónico '{email}' ya está registrado", "warning"
+            
+            # Generar hash de la contraseña
+            password_hash = generate_password_hash(password)
+            
+            # Crear el usuario en la base de datos
+            new_user = self._usuario_repo.create_user(
+                username=username,
+                email=email,
+                password_hash=password_hash,
+                id_rol=id_rol,
+                activo=True,
+                fecha_creacion=datetime.utcnow()
+            )
+            
+            logger.info(f"Nuevo usuario creado: {username} (ID: {new_user.id})")
+            
+            # Opcional: Enviar email de bienvenida
+            try:
+                self._email_service.send_user_welcome(email, username)
+                logger.info(f"Email de bienvenida enviado a {email}")
+            except Exception as e:
+                logger.warning(f"No se pudo enviar email de bienvenida a {email}: {e}")
+            
+            return f"Usuario '{username}' creado exitosamente", "success"
+            
+        except Exception as e:
+            logger.error(f"Error al crear usuario: {str(e)}")
+            return f"Error al crear usuario: {str(e)}", "danger"

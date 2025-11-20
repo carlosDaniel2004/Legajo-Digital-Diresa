@@ -100,8 +100,39 @@ from werkzeug.security import generate_password_hash
 @login_required
 def perfil():
     """
-    Muestra el perfil del usuario y permite cambiar la contraseña.
+    Muestra el perfil del usuario con información detallada y permite cambiar la contraseña.
     """
+    usuario_service = current_app.config.get('USUARIO_SERVICE')
+    legajo_service = current_app.config.get('LEGAJO_SERVICE')
+    
+    # Obtener datos adicionales del usuario
+    user_data = {
+        'id': current_user.id,
+        'username': current_user.username,
+        'email': current_user.email,
+        'rol': current_user.rol if hasattr(current_user, 'rol') else None,
+        'estado': current_user.estado if hasattr(current_user, 'estado') else 'activo',
+        'personal_info': None,
+        'fecha_registro': current_user.fecha_registro if hasattr(current_user, 'fecha_registro') else None,
+    }
+    
+    # Obtener información del personal asociado si existe
+    try:
+        if legajo_service and hasattr(current_user, 'personal_id'):
+            personal = legajo_service.get_personal_by_id(current_user.personal_id)
+            if personal:
+                user_data['personal_info'] = {
+                    'nombres': f"{personal.get('nombres', '')} {personal.get('apellidos', '')}".strip(),
+                    'dni': personal.get('dni', 'N/A'),
+                    'email': personal.get('email', current_user.email),
+                    'telefono': personal.get('telefono', 'N/A'),
+                    'unidad_administrativa': personal.get('unidad_administrativa', 'N/A'),
+                    'cargo': personal.get('cargo', 'N/A'),
+                    'fecha_ingreso': personal.get('fecha_ingreso', 'N/A'),
+                }
+    except Exception as e:
+        current_app.logger.warning(f"No se pudo obtener datos personales: {str(e)}")
+    
     if request.method == 'POST':
         password_actual = request.form.get('password_actual')
         password_nueva = request.form.get('password_nueva')
@@ -115,27 +146,24 @@ def perfil():
         if password_nueva != password_confirmacion:
             flash('Las nuevas contraseñas no coinciden.', 'danger')
             return redirect(url_for('auth.perfil'))
+        
+        if len(password_nueva) < 8:
+            flash('La contraseña debe tener al menos 8 caracteres.', 'danger')
+            return redirect(url_for('auth.perfil'))
 
         # Verificar contraseña actual
-        # Nota: check_password debe ser un método de tu modelo User (UserMixin)
         if not current_user.check_password(password_actual):
             flash('La contraseña actual es incorrecta.', 'danger')
             return redirect(url_for('auth.perfil'))
 
         try:
             # Actualizar contraseña usando el servicio
-            # Asumimos que 'USUARIO_SERVICE' está registrado en la config, igual que 'LEGAJO_SERVICE'
-            usuario_service = current_app.config.get('USUARIO_SERVICE')
-            
             if usuario_service:
-                # Encriptamos antes de enviar o el servicio lo hace (depende de tu lógica).
-                # Aquí asumiremos que el servicio espera el hash o lo hashea él mismo.
-                # Si tu servicio espera texto plano y él lo hashea:
                 usuario_service.update_password(current_user.id, password_nueva) 
             else:
-                # Fallback si el servicio no está en config (Actualización directa manual)
+                from werkzeug.security import generate_password_hash
                 current_user.password_hash = generate_password_hash(password_nueva)
-                from app import db # Importación tardía para evitar ciclos
+                from app import db
                 db.session.commit()
 
             flash('¡Contraseña actualizada correctamente!', 'success')
@@ -143,4 +171,4 @@ def perfil():
             current_app.logger.error(f"Error al cambiar password: {str(e)}")
             flash('Ocurrió un error al actualizar la contraseña.', 'danger')
 
-    return render_template('auth/perfil.html', user=current_user)
+    return render_template('auth/perfil.html', user=current_user, user_data=user_data)

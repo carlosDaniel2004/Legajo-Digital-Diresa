@@ -81,10 +81,6 @@
                 {% if 'backups' in request.endpoint %}active{% endif %}">
                 <i class="bi bi-cloud-upload"></i>Backups
             </a>
-            <a href="{{ url_for('sistemas.solicitudes_pendientes') }}" class="list-group-item 
-                {% if request.endpoint == 'sistemas.solicitudes_pendientes' %}active{% endif %}">
-                <i class="bi bi-bell-fill"></i>Solicitudes Pendientes
-            </a>
             <a href="{{ url_for('sistemas.errores') }}" class="list-group-item 
                 {% if request.endpoint == 'sistemas.errores' %}active{% endif %}">
                 <i class="bi bi-bug"></i>Registro de Errores

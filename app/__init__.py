@@ -24,6 +24,7 @@ from .application.services.legajo_service import LegajoService
 from .application.services.audit_service import AuditService
 from .application.services.solicitud_service import SolicitudService 
 from .application.services.backup_service import BackupService 
+from .application.services.monitoring_service import MonitoringService 
 from .infrastructure.persistence.sqlserver_repository import (
     SqlServerUsuarioRepository, 
     SqlServerPersonalRepository, 
@@ -166,6 +167,7 @@ def create_app():
         app.config['USUARIO_SERVICE'] = UsuarioService(usuario_repo, email_service)
         app.config['AUDIT_SERVICE'] = audit_service
         app.config['LEGAJO_SERVICE'] = LegajoService(personal_repo, audit_service)
+        app.config['MONITORING_SERVICE'] = MonitoringService(personal_repo)
 
         # Seguridad: Mover la importación de blueprints aquí para evitar importaciones circulares
         from .presentation.routes.auth_routes import auth_bp

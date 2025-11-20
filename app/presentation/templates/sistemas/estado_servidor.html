@@ -4,70 +4,162 @@
 {% block dashboard_content %}
 <div class="dashboard-header-titles mb-4">
     <h2 class="section-title text-info">ESTADO DEL SERVIDOR</h2>
-    <h3 class="subsection-title">Salud de CPU, Memoria y Conexiones a DB</h3>
+    <h3 class="subsection-title">Salud de CPU, Memoria, Disco y Base de Datos</h3>
 </div>
 
+<!-- MÉTRICAS DEL SISTEMA -->
 <div class="row g-4 mb-4">
     
     {# Tarjeta 1: Uso de CPU #}
     <div class="col-lg-3 col-md-6">
-        <div class="summary-card bg-light-red p-3 shadow-sm border-start border-4 border-danger">
-            <p class="mb-1 text-muted">Uso de CPU (Actual)</p>
-            {# Asumimos que la variable es 'cpu_usage' #}
-            <h4 class="metric-value text-danger">{{ cpu_usage | default('N/A') }}%</h4> 
+        <div class="summary-card p-4 shadow-sm border-start border-4 border-danger">
+            <p class="mb-2 text-muted small">Uso de CPU</p>
+            <h3 class="metric-value text-danger mb-2">{{ cpu_percent }}%</h3>
+            <div class="progress" style="height: 6px;">
+                <div class="progress-bar {% if cpu_status == 'bueno' %}bg-success{% elif cpu_status == 'advertencia' %}bg-warning{% else %}bg-danger{% endif %}" 
+                     role="progressbar" style="width: {{ cpu_percent }}%"></div>
+            </div>
+            <small class="text-muted d-block mt-2">Estado: <span class="badge bg-{% if cpu_status == 'bueno' %}success{% elif cpu_status == 'advertencia' %}warning{% else %}danger{% endif %}">{{ cpu_status | upper }}</span></small>
         </div>
     </div>
 
     {# Tarjeta 2: Uso de Memoria RAM #}
     <div class="col-lg-3 col-md-6">
-        <div class="summary-card bg-light-blue p-3 shadow-sm border-start border-4 border-primary">
-            <p class="mb-1 text-muted">Memoria RAM Libre</p>
-            {# Asumimos que la variable es 'ram_free' #}
-            <h4 class="metric-value text-primary">{{ ram_free | default('N/A') }} GB</h4>
+        <div class="summary-card p-4 shadow-sm border-start border-4 border-primary">
+            <p class="mb-2 text-muted small">Memoria RAM</p>
+            <h3 class="metric-value text-primary mb-1">{{ ram_used_gb }} / {{ ram_total_gb }} GB</h3>
+            <small class="text-muted">Disponible: {{ ram_available_gb }} GB</small>
+            <div class="progress mt-2" style="height: 6px;">
+                <div class="progress-bar {% if ram_status == 'bueno' %}bg-success{% elif ram_status == 'advertencia' %}bg-warning{% else %}bg-danger{% endif %}" 
+                     role="progressbar" style="width: {{ ram_percent }}%"></div>
+            </div>
+            <small class="text-muted d-block mt-2">{{ ram_percent }}% Usado</small>
         </div>
     </div>
 
-    {# Tarjeta 3: Conexiones Activas a DB #}
+    {# Tarjeta 3: Espacio en Disco #}
     <div class="col-lg-3 col-md-6">
-        <div class="summary-card bg-light-green p-3 shadow-sm border-start border-4 border-success">
-            <p class="mb-1 text-muted">Conexiones Activas a DB</p>
-            {# Asumimos que la variable es 'db_connections' #}
-            <h4 class="metric-value text-success">{{ db_connections | default(0) }}</h4>
+        <div class="summary-card p-4 shadow-sm border-start border-4 border-warning">
+            <p class="mb-2 text-muted small">Espacio en Disco</p>
+            <h3 class="metric-value text-warning mb-1">{{ disk_used_gb }} / {{ disk_total_gb }} GB</h3>
+            <small class="text-muted">Libre: {{ disk_free_gb }} GB</small>
+            <div class="progress mt-2" style="height: 6px;">
+                <div class="progress-bar {% if disk_status == 'bueno' %}bg-success{% elif disk_status == 'advertencia' %}bg-warning{% else %}bg-danger{% endif %}" 
+                     role="progressbar" style="width: {{ disk_percent }}%"></div>
+            </div>
+            <small class="text-muted d-block mt-2">{{ disk_percent }}% Usado</small>
         </div>
     </div>
-    
-    {# Tarjeta 4: Enlace de Retorno #}
+
+    {# Tarjeta 4: Conexiones a BD #}
     <div class="col-lg-3 col-md-6">
-        <a href="{{ url_for('sistemas.dashboard') }}" class="summary-card p-3 shadow-sm border-start border-4 border-secondary d-block text-decoration-none">
-            <p class="mb-1 text-muted">Volver al Inicio</p>
-            <h4 class="metric-value text-secondary">Dashboard <i class="bi bi-arrow-left-circle-fill"></i></h4>
-        </a>
+        <div class="summary-card p-4 shadow-sm border-start border-4 border-success">
+            <p class="mb-2 text-muted small">BD - Información</p>
+            <h3 class="metric-value text-success mb-1">{{ active_connections }}</h3>
+            <small class="text-muted">Conexiones Activas</small>
+            <div class="mt-3">
+                <small class="text-muted d-block">Tamaño: <strong>{{ db_size_gb }} GB</strong></small>
+                <small class="text-muted d-block">Estado: <span class="badge bg-success">{{ db_status | upper }}</span></small>
+            </div>
+        </div>
     </div>
 
 </div>
 
-<div class="card shadow">
+<!-- TABLA DE RESUMEN GENERAL -->
+<div class="card shadow mb-4">
     <div class="card-header bg-secondary text-white">
-        Registro de Logs de Salud del Sistema
+        <h6 class="m-0"><i class="bi bi-table me-2"></i>Resumen de Métricas del Sistema</h6>
     </div>
-    <div class="card-body">
-        <p class="text-muted">La implementación requiere un servicio de infraestructura (ej. `INFRA_SERVICE`) para monitorear el sistema operativo y la base de datos.</p>
-        
-        {# Aquí iría una tabla de logs técnicos similar a la de auditoría, si tu backend los proporciona #}
-        <table class="table table-sm table-striped">
-            <thead>
+    <div class="table-responsive">
+        <table class="table table-sm table-striped m-0">
+            <thead class="table-light">
                 <tr>
-                    <th>Hora</th>
                     <th>Métrica</th>
-                    <th>Valor</th>
-                    <th>Umbral</th>
+                    <th>Valor Actual</th>
+                    <th>Umbral Normal</th>
                     <th>Estado</th>
                 </tr>
             </thead>
             <tbody>
-                <tr><td colspan="5" class="text-center text-secondary">Aún no hay datos de monitoreo en tiempo real.</td></tr>
+                <tr>
+                    <td><i class="bi bi-cpu text-danger me-2"></i><strong>CPU</strong></td>
+                    <td>{{ cpu_percent }}%</td>
+                    <td>&lt; 80%</td>
+                    <td><span class="badge bg-{% if cpu_status == 'bueno' %}success{% elif cpu_status == 'advertencia' %}warning{% else %}danger{% endif %}">{{ cpu_status | upper }}</span></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-memory text-primary me-2"></i><strong>Memoria RAM</strong></td>
+                    <td>{{ ram_percent }}%</td>
+                    <td>&lt; 80%</td>
+                    <td><span class="badge bg-{% if ram_status == 'bueno' %}success{% elif ram_status == 'advertencia' %}warning{% else %}danger{% endif %}">{{ ram_status | upper }}</span></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-hdd text-warning me-2"></i><strong>Disco</strong></td>
+                    <td>{{ disk_percent }}%</td>
+                    <td>&lt; 80%</td>
+                    <td><span class="badge bg-{% if disk_status == 'bueno' %}success{% elif disk_status == 'advertencia' %}warning{% else %}danger{% endif %}">{{ disk_status | upper }}</span></td>
+                </tr>
+                <tr>
+                    <td><i class="bi bi-database text-success me-2"></i><strong>Base de Datos</strong></td>
+                    <td>{{ active_connections }} conexiones</td>
+                    <td>&lt; 100</td>
+                    <td><span class="badge bg-success">{{ db_status | upper }}</span></td>
+                </tr>
             </tbody>
         </table>
     </div>
 </div>
+
+<!-- INFORMACIÓN ADICIONAL -->
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h6 class="m-0"><i class="bi bi-info-circle me-2"></i>Sistema Operativo</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li><strong>RAM Total:</strong> {{ ram_total_gb }} GB</li>
+                    <li><strong>Disco Total:</strong> {{ disk_total_gb }} GB</li>
+                    <li><strong>Timestamp:</strong> <small class="text-muted">{{ timestamp }}</small></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h6 class="m-0"><i class="bi bi-database me-2"></i>Base de Datos</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li><strong>Tamaño Total:</strong> {{ db_size_gb }} GB</li>
+                    <li><strong>Conexiones Activas:</strong> {{ active_connections }}</li>
+                    <li><strong>Estado:</strong> <span class="badge bg-success">{{ db_status | upper }}</span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .metric-value {
+        font-weight: 700;
+        font-size: 2.5rem;
+    }
+    
+    .summary-card {
+        border-radius: 8px;
+        background: white;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .summary-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1) !important;
+    }
+</style>
+
 {% endblock %}

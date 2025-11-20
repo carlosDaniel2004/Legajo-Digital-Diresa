@@ -30,3 +30,28 @@ class EmailService:
             # Si ocurre un error, lo registra en el log y lanza una excepción más genérica.
             current_app.logger.error(f"Error al enviar email de 2FA a {recipient_email}: {e}")
             raise ConnectionError("No se pudo enviar el correo de verificación.")
+
+    def send_user_welcome(self, recipient_email, username):
+        """
+        Envía un email de bienvenida al usuario después de ser creado.
+        
+        Args:
+            recipient_email: Email del usuario
+            username: Nombre de usuario creado
+        """
+        try:
+            msg = Message(
+                subject='Bienvenido al Sistema de Legajo Digital - DIRESA',
+                sender=current_app.config['MAIL_DEFAULT_SENDER'],
+                recipients=[recipient_email]
+            )
+            msg.html = render_template(
+                'email/welcome_user.html',
+                username=username,
+                system_name='Legajo Digital DIRESA'
+            )
+            self.mail.send(msg)
+            current_app.logger.info(f"Email de bienvenida enviado a {recipient_email}")
+        except Exception as e:
+            current_app.logger.warning(f"No se pudo enviar email de bienvenida a {recipient_email}: {e}")
+            # No lanzar excepción para no interrumpir la creación del usuario

@@ -4,82 +4,213 @@
 {% block title %}Editar Usuario{% endblock %}
 
 {% block dashboard_content %}
-<div class="container-fluid">
-    <h1 class="h3 mb-4 text-gray-800">Editar Usuario: {{ user.username }}</h1>
+<div class="container-fluid px-4">
+    <!-- Header -->
+    <div class="dashboard-header-titles mb-4">
+        <h2 class="section-title text-primary">EDITAR USUARIO</h2>
+        <h3 class="subsection-title">Actualizar información de usuario del sistema</h3>
+    </div>
 
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Información del Usuario</h6>
+    <!-- Información Actual del Usuario -->
+    <div class="row mb-4">
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-start border-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="m-0"><i class="bi bi-person-circle me-2"></i>Información Actual</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Usuario</small>
+                        <strong class="h6">{{ user.username }}</strong>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Correo Electrónico</small>
+                        {% if user.email %}
+                            <strong class="h6 text-break">{{ user.email }}</strong>
+                        {% else %}
+                            <span class="badge bg-warning">No asignado</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Rol</small>
+                        {% if user.nombre_rol %}
+                            <span class="badge bg-primary p-2">{{ user.nombre_rol }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Sin Rol</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-0">
+                        <small class="text-muted d-block">Estado</small>
+                        {% if user.activo %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-danger">Inactivo</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <p><strong>Usuario Actual:</strong> {{ user.username }}</p>
-            <p><strong>Correo:</strong> {{ user.email }}</p>
-            <p><strong>Rol:</strong> {{ user.nombre_rol }}</p>
-            <hr>
-            
-            <form method="POST" action="{{ url_for('sistemas.editar_usuario', user_id=user.id_usuario) }}">
-                {{ form.csrf_token }}
-                
-                <!-- Sección de Nuevo Nombre de Usuario -->
-                <h5 class="mb-3">Cambiar Nombre de Usuario (Opcional)</h5>
-                <p class="text-muted small"><i class="bi bi-info-circle me-2"></i>Deja este campo vacío si no deseas cambiar el nombre de usuario.</p>
-                
-                <div class="form-group row">
-                    <div class="col-sm-6 mb-3 mb-sm-0">
-                        {{ render_field(form.nueva_username, class="form-control", placeholder="Nuevo nombre de usuario") }}
-                    </div>
+
+        <!-- Formulario de Edición -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-start border-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="m-0"><i class="bi bi-pencil-square me-2"></i>Editar Información</h6>
                 </div>
-                
-                <hr>
-                
-                <!-- Sección de Nuevo Correo -->
-                <h5 class="mb-3">Cambiar Correo Electrónico (Opcional)</h5>
-                <p class="text-muted small"><i class="bi bi-info-circle me-2"></i>Deja este campo vacío si no deseas cambiar el correo electrónico.</p>
-                
-                <div class="form-group row">
-                    <div class="col-sm-6 mb-3 mb-sm-0">
-                        {{ render_field(form.nuevo_email, class="form-control", placeholder="Nuevo correo electrónico", type="email") }}
-                        {% if form.nuevo_email.errors %}
-                            <small class="text-danger">{{ form.nuevo_email.errors[0] }}</small>
-                        {% endif %}
-                    </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('sistemas.editar_usuario', user_id=user.id_usuario) }}" novalidate>
+                        {{ form.csrf_token }}
+                        
+                        <!-- Sección: Nombre de Usuario -->
+                        <div class="mb-4">
+                            <h6 class="mb-3 fw-semibold text-dark">
+                                <i class="bi bi-person-fill me-2 text-primary"></i>Nombre de Usuario
+                            </h6>
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-info-circle me-1"></i>Deja vacío si no deseas cambiar el nombre de usuario.
+                            </p>
+                            <div class="input-group">
+                                {{ render_field(form.nueva_username, class="form-control form-control-lg", 
+                                    placeholder="Nuevo nombre de usuario (mínimo 3 caracteres)") }}
+                            </div>
+                            {% if form.nueva_username.errors %}
+                                <div class="alert alert-danger small mt-2" role="alert">
+                                    <i class="bi bi-exclamation-circle me-2"></i>
+                                    {% for error in form.nueva_username.errors %}
+                                        {{ error }}<br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <hr>
+
+                        <!-- Sección: Correo Electrónico -->
+                        <div class="mb-4">
+                            <h6 class="mb-3 fw-semibold text-dark">
+                                <i class="bi bi-envelope-fill me-2 text-primary"></i>Correo Electrónico
+                            </h6>
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-info-circle me-1"></i>Deja vacío si no deseas cambiar el correo electrónico.
+                            </p>
+                            <div class="input-group">
+                                {{ render_field(form.nuevo_email, class="form-control form-control-lg", 
+                                    placeholder="nuevo.correo@example.com", type="email") }}
+                            </div>
+                            {% if form.nuevo_email.errors %}
+                                <div class="alert alert-danger small mt-2" role="alert">
+                                    <i class="bi bi-exclamation-circle me-2"></i>
+                                    {% for error in form.nuevo_email.errors %}
+                                        {{ error }}<br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <hr>
+
+                        <!-- Sección: Contraseña -->
+                        <div class="mb-4">
+                            <h6 class="mb-3 fw-semibold text-dark">
+                                <i class="bi bi-lock-fill me-2 text-primary"></i>Contraseña
+                            </h6>
+                            <p class="text-muted small mb-3">
+                                <i class="bi bi-info-circle me-1"></i>Deja vacío si no deseas cambiar la contraseña.
+                                <br>
+                                <strong>Requisitos:</strong> Mínimo 8 caracteres, debe incluir mayúsculas, minúsculas, números y caracteres especiales.
+                            </p>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    {{ render_field(form.nueva_password, class="form-control form-control-lg", 
+                                        placeholder="Nueva contraseña", type="password") }}
+                                    {% if form.nueva_password.errors %}
+                                        <div class="alert alert-danger small mt-2" role="alert">
+                                            {% for error in form.nueva_password.errors %}
+                                                {{ error }}<br>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ render_field(form.nueva_confirm, class="form-control form-control-lg", 
+                                        placeholder="Confirmar contraseña", type="password") }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Botones de Acción -->
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{{ url_for('sistemas.gestionar_usuarios') }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-arrow-left me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle me-2"></i>Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                
-                <hr>
-                
-                <!-- Sección de Contraseña -->
-                <h5 class="mb-3">Cambiar Contraseña (Opcional)</h5>
-                <p class="text-muted small">
-                    <i class="bi bi-info-circle me-2"></i>Deja estos campos vacíos si no deseas cambiar la contraseña.
-                    <br>
-                    <strong>Nota:</strong> La contraseña no puede ser igual al nombre de usuario.
-                </p>
-                
-                <div class="form-group row">
-                    <div class="col-sm-6 mb-3 mb-sm-0">
-                        {{ render_field(form.nueva_password, class="form-control", placeholder="Nueva contraseña", type="password") }}
-                        {% if form.nueva_password.errors %}
-                            <small class="text-danger">{{ form.nueva_password.errors[0] }}</small>
-                        {% endif %}
-                    </div>
-                    <div class="col-sm-6">
-                        {{ render_field(form.nueva_confirm, class="form-control", placeholder="Confirmar nueva contraseña", type="password") }}
-                    </div>
-                </div>
-                
-                <hr>
-                
-                <!-- Botones de Acción -->
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary btn-user">
-                        <i class="fas fa-save mr-2"></i>Guardar Cambios
-                    </button>
-                    <a href="{{ url_for('sistemas.gestionar_usuarios') }}" class="btn btn-secondary btn-user">
-                        <i class="fas fa-arrow-left mr-2"></i>Cancelar
-                    </a>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+    .dashboard-header-titles {
+        border-bottom: 3px solid #0d6efd;
+        padding-bottom: 1.5rem;
+    }
+
+    .section-title {
+        font-weight: 700;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .subsection-title {
+        font-size: 1rem;
+        color: #6c757d;
+        font-weight: 400;
+    }
+
+    .card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border-radius: 8px;
+    }
+
+    .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .form-control {
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+    }
+
+    .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+
+    .btn {
+        border-radius: 6px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .text-break {
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+</style>
 {% endblock %}

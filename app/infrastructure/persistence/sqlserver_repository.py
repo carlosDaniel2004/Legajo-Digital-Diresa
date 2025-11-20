@@ -86,27 +86,244 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
         return usuarios
 
     def find_by_id(self, user_id):
+        """Busca un usuario por su ID con todos los campos incluyendo email y rol."""
         conn = get_db_read()
         cursor = conn.cursor()
-        query = "{CALL sp_obtener_usuario_por_id(?)}"
-        cursor.execute(query, user_id)
-        row_dict = _row_to_dict(cursor, cursor.fetchone())
-        return Usuario(**row_dict) if row_dict else None
+        try:
+            # Query con JOIN a tabla roles para obtener nombre del rol
+            query = """
+            SELECT 
+                u.id_usuario, 
+                u.username, 
+                u.email, 
+                u.password_hash, 
+                u.id_rol, 
+                u.activo,
+                u.two_factor_code,
+                u.two_factor_expiry,
+                r.nombre_rol
+            FROM usuarios u
+            LEFT JOIN roles r ON u.id_rol = r.id_rol
+            WHERE u.id_usuario = ?
+            """
+            cursor.execute(query, user_id)
+            row = cursor.fetchone()
+            
+            if row:
+                row_dict = _row_to_dict(cursor, row)
+                return Usuario(**row_dict) if row_dict else None
+            
+            return None
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            # Si falla por permisos en roles, intentar sin el JOIN
+            if "roles" in str(e).lower() or "permission" in str(e).lower() or "229" in str(e):
+                logger.warning(f"JOIN a roles falló para user_id {user_id}, intentando sin JOIN")
+                try:
+                    query_fallback = """
+                    SELECT 
+                        u.id_usuario, 
+                        u.username, 
+                        u.email, 
+                        u.password_hash, 
+                        u.id_rol, 
+                        u.activo,
+                        u.two_factor_code,
+                        u.two_factor_expiry
+                    FROM usuarios u
+                    WHERE u.id_usuario = ?
+                    """
+                    cursor.execute(query_fallback, user_id)
+                    row = cursor.fetchone()
+                    
+                    if row:
+                        row_dict = _row_to_dict(cursor, row)
+                        return Usuario(**row_dict) if row_dict else None
+                    return None
+                except Exception as e2:
+                    logger.error(f"Fallback también falló para user_id {user_id}: {e2}")
+                    return None
+            else:
+                logger.error(f"Error al obtener usuario por ID {user_id}: {e}")
+                return None
 
     def find_by_username_with_email(self, username):
+        """Busca un usuario por su nombre de usuario para login (con email y rol)."""
+        conn = get_db_read()
+        cursor = conn.cursor()
+        
         try:
-            conn = get_db_read()
-            cursor = conn.cursor()
-            query = "{CALL sp_obtener_usuario_por_username(?)}"
+            # Intentar con query directa que incluye JOIN a roles
+            query = """
+            SELECT 
+                u.id_usuario, 
+                u.username, 
+                u.email, 
+                u.password_hash, 
+                u.id_rol, 
+                u.activo,
+                u.two_factor_code,
+                u.two_factor_expiry,
+                r.nombre_rol
+            FROM usuarios u
+            LEFT JOIN roles r ON u.id_rol = r.id_rol
+            WHERE u.username = ?
+            """
+            cursor.execute(query, username)
+            row = cursor.fetchone()
+            
+            if row:
+                row_dict = _row_to_dict(cursor, row)
+                return Usuario(**row_dict) if row_dict else None
+            
+            return None
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            # Si falla por permisos en roles, intentar sin el JOIN
+            if "roles" in str(e).lower() or "permission" in str(e).lower() or "229" in str(e):
+                logger.warning(f"JOIN a roles falló, intentando sin JOIN: {e}")
+                try:
+                    # Fallback: Query sin JOIN a roles
+                    query_fallback = """
+                    SELECT 
+                        u.id_usuario, 
+                        u.username, 
+                        u.email, 
+                        u.password_hash, 
+                        u.id_rol, 
+                        u.activo,
+                        u.two_factor_code,
+                        u.two_factor_expiry
+                    FROM usuarios u
+                    WHERE u.username = ?
+                    """
+                    cursor.execute(query_fallback, username)
+                    row = cursor.fetchone()
+                    
+                    if row:
+                        row_dict = _row_to_dict(cursor, row)
+                        return Usuario(**row_dict) if row_dict else None
+                    return None
+                    
+                except Exception as e2:
+                    logger.error(f"Fallback también falló para usuario '{username}': {e2}")
+                    return None
+            else:
+                logger.error(f"Error al obtener usuario por username '{username}': {e}")
+                return None
+
+    def find_by_username(self, username):
+        """Busca un usuario por su nombre de usuario."""
+        conn = get_db_read()
+        cursor = conn.cursor()
+        try:
+            query = """
+            SELECT 
+                u.id_usuario, 
+                u.username, 
+                u.email, 
+                u.password_hash, 
+                u.id_rol, 
+                u.activo,
+                u.two_factor_code,
+                u.two_factor_expiry,
+                r.nombre_rol
+            FROM usuarios u
+            LEFT JOIN roles r ON u.id_rol = r.id_rol
+            WHERE u.username = ?
+            """
             cursor.execute(query, username)
             row_dict = _row_to_dict(cursor, cursor.fetchone())
             return Usuario(**row_dict) if row_dict else None
         except Exception as e:
-            # Loguear el error para debugging
             import logging
             logger = logging.getLogger(__name__)
-            logger.error(f"Error al obtener usuario por username '{username}': {e}")
-            return None
+            
+            # Si falla por roles, intentar sin JOIN
+            if "roles" in str(e).lower() or "permission" in str(e).lower():
+                logger.warning(f"JOIN a roles falló para {username}, intentando sin JOIN")
+                try:
+                    query_fallback = """
+                    SELECT 
+                        u.id_usuario, 
+                        u.username, 
+                        u.email, 
+                        u.password_hash, 
+                        u.id_rol, 
+                        u.activo,
+                        u.two_factor_code,
+                        u.two_factor_expiry
+                    FROM usuarios u
+                    WHERE u.username = ?
+                    """
+                    cursor.execute(query_fallback, username)
+                    row_dict = _row_to_dict(cursor, cursor.fetchone())
+                    return Usuario(**row_dict) if row_dict else None
+                except Exception as e2:
+                    logger.error(f"Fallback falló para {username}: {e2}")
+                    return None
+            else:
+                logger.error(f"Error al buscar usuario por username: {e}")
+                return None
+
+    def find_by_email(self, email):
+        """Busca un usuario por su correo electrónico."""
+        conn = get_db_read()
+        cursor = conn.cursor()
+        try:
+            query = """
+            SELECT 
+                u.id_usuario, 
+                u.username, 
+                u.email, 
+                u.password_hash, 
+                u.id_rol, 
+                u.activo,
+                u.two_factor_code,
+                u.two_factor_expiry,
+                r.nombre_rol
+            FROM usuarios u
+            LEFT JOIN roles r ON u.id_rol = r.id_rol
+            WHERE u.email = ?
+            """
+            cursor.execute(query, email)
+            row_dict = _row_to_dict(cursor, cursor.fetchone())
+            return Usuario(**row_dict) if row_dict else None
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            # Si falla por roles, intentar sin JOIN
+            if "roles" in str(e).lower() or "permission" in str(e).lower():
+                logger.warning(f"JOIN a roles falló para {email}, intentando sin JOIN")
+                try:
+                    query_fallback = """
+                    SELECT 
+                        u.id_usuario, 
+                        u.username, 
+                        u.email, 
+                        u.password_hash, 
+                        u.id_rol, 
+                        u.activo,
+                        u.two_factor_code,
+                        u.two_factor_expiry
+                    FROM usuarios u
+                    WHERE u.email = ?
+                    """
+                    cursor.execute(query_fallback, email)
+                    row_dict = _row_to_dict(cursor, cursor.fetchone())
+                    return Usuario(**row_dict) if row_dict else None
+                except Exception as e2:
+                    logger.error(f"Fallback falló para {email}: {e2}")
+                    return None
+            else:
+                logger.error(f"Error al buscar usuario por email: {e}")
+                return None
 
     def set_2fa_code(self, user_id, hashed_code, expiry_date):
         conn = get_db_write()
@@ -181,6 +398,60 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
         # Actualizar directamente en la tabla usuarios
         cursor.execute("UPDATE usuarios SET email = ? WHERE id_usuario = ?", new_email, user_id)
         conn.commit()
+
+    def create_user(self, username, email, password_hash, id_rol, activo=True, fecha_creacion=None):
+        """
+        Crea un nuevo usuario en la base de datos.
+        Utiliza la conexión de administrador debido a permisos de INSERT.
+        
+        Args:
+            username: Nombre de usuario único
+            email: Correo electrónico único
+            password_hash: Hash de la contraseña
+            id_rol: ID del rol a asignar
+            activo: Estado del usuario (default: True)
+            fecha_creacion: Fecha de creación (si no se proporciona, usa NOW())
+        
+        Returns:
+            Usuario creado con su ID asignado
+        """
+        from app.database.connector import get_db_admin
+        from datetime import datetime
+        
+        conn = get_db_admin()
+        cursor = conn.cursor()
+        
+        try:
+            # Insertar el nuevo usuario
+            query = """
+            INSERT INTO usuarios (username, email, password_hash, id_rol, activo, fecha_creacion)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """
+            cursor.execute(query, username, email, password_hash, id_rol, activo, fecha_creacion or datetime.utcnow())
+            conn.commit()
+            
+            # Obtener el ID del usuario creado
+            cursor.execute("SELECT @@IDENTITY as id_usuario")
+            new_id = cursor.fetchone()[0]
+            
+            # Retornar el usuario creado
+            new_user = Usuario(
+                id_usuario=new_id,
+                username=username,
+                email=email,
+                password_hash=password_hash,
+                id_rol=id_rol,
+                activo=activo
+            )
+            
+            return new_user
+            
+        except Exception as e:
+            conn.rollback()
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al crear usuario: {e}")
+            raise
 
     def get_all_roles(self):
         """Obtiene todos los roles disponibles de la base de datos.

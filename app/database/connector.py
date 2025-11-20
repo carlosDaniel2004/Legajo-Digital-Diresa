@@ -42,6 +42,16 @@ def get_db_write():
         )
     return g.db_write
 
+# Define una función para obtener una conexión con permisos de administrador de sistemas
+def get_db_admin():
+    if 'db_admin' not in g:
+        # Si no hay conexión de admin en 'g', crea una nueva con las credenciales de administrador.
+        g.db_admin = _get_db_connection(
+            current_app.config['DB_USERNAME_SYSTEMS_ADMIN'],
+            current_app.config['DB_PASSWORD_SYSTEMS_ADMIN']
+        )
+    return g.db_admin
+
 # Define una función para cerrar las conexiones al final de la petición.
 def close_db(e=None):
     # Busca y cierra la conexión de lectura si existe.
@@ -53,6 +63,11 @@ def close_db(e=None):
     db_write = g.pop('db_write', None)
     if db_write is not None:
         db_write.close()
+    
+    # Busca y cierra la conexión de admin si existe.
+    db_admin = g.pop('db_admin', None)
+    if db_admin is not None:
+        db_admin.close()
 
 # Define una función para inicializar el manejo de la base de datos en la aplicación Flask.
 def init_app_db(app):

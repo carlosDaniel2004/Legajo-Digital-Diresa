@@ -72,11 +72,18 @@ def crear_usuario():
         
         try:
             usuario_service = current_app.config['USUARIO_SERVICE']
-            usuario_service.create_user(form.data)
-            flash('Usuario creado con éxito.', 'success')
-            return redirect(url_for('sistemas.gestionar_usuarios'))
+            mensaje, tipo = usuario_service.create_user(form.data)
+            flash(mensaje, tipo)
+            
+            # Si la creación fue exitosa, redirigir a la lista de usuarios
+            if tipo == 'success':
+                return redirect(url_for('sistemas.gestionar_usuarios'))
+            # Si no fue exitosa (warning/danger), mantener el formulario
+            else:
+                return render_template('sistemas/crear_usuario.html', form=form)
         except Exception as e:
-            flash(f'Error al crear usuario: {e}', 'danger')
+            current_app.logger.error(f"Error al crear usuario: {str(e)}")
+            flash(f'Error al crear usuario: {str(e)}', 'danger')
     return render_template('sistemas/crear_usuario.html', form=form)
 
 
@@ -192,7 +199,18 @@ def run_backup():
 @login_required
 @role_required('Sistemas')
 def estado_servidor():
-    return render_template('sistemas/estado_servidor.html')
+    monitoring_service = current_app.config.get('MONITORING_SERVICE')
+    
+    # Obtener métricas del sistema
+    system_metrics = monitoring_service.get_system_metrics()
+    
+    # Obtener métricas de la base de datos
+    db_metrics = monitoring_service.get_database_metrics()
+    
+    # Combinar todas las métricas
+    metrics = {**system_metrics, **db_metrics}
+    
+    return render_template('sistemas/estado_servidor.html', **metrics)
 
 @sistemas_bp.route('/errores')
 @login_required
@@ -236,27 +254,28 @@ def reportes():
     return render_template('sistemas/reportes.html')
 
 
-@sistemas_bp.route('/solicitudes')
-@login_required
-@role_required('Sistemas')
-def solicitudes_pendientes():
-    solicitudes_service = current_app.config.get('SOLICITUDES_SERVICE')
-    solicitudes = solicitudes_service.get_all_pending() if solicitudes_service else []
-    return render_template('sistemas/solicitudes_pendientes.html', requests=solicitudes)
+# DESACTIVADO: Esta funcionalidad ya no se utiliza
+# @sistemas_bp.route('/solicitudes')
+# @login_required
+# @role_required('Sistemas')
+# def solicitudes_pendientes():
+#     solicitudes_service = current_app.config.get('SOLICITUDES_SERVICE')
+#     solicitudes = solicitudes_service.get_all_pending() if solicitudes_service else []
+#     return render_template('sistemas/solicitudes_pendientes.html', requests=solicitudes)
 
 
-@sistemas_bp.route('/solicitudes/procesar/<int:request_id>', methods=['POST'])
-@login_required
-@role_required('Sistemas')
-def procesar_solicitud(request_id):
-    action = request.form.get('action')
-    if action in ['aprobar', 'rechazar']:
-        solicitud_service = current_app.config['SOLICITUDES_SERVICE']
-        solicitud_service.process_request(request_id, action)
-        flash(f'Solicitud {action}da con éxito.', 'success')
-    else:
-        flash('Acción no válida.', 'danger')
-    return redirect(url_for('sistemas.solicitudes_pendientes'))
+# @sistemas_bp.route('/solicitudes/procesar/<int:request_id>', methods=['POST'])
+# @login_required
+# @role_required('Sistemas')
+# def procesar_solicitud(request_id):
+#     action = request.form.get('action')
+#     if action in ['aprobar', 'rechazar']:
+#         solicitud_service = current_app.config['SOLICITUDES_SERVICE']
+#         solicitud_service.process_request(request_id, action)
+#         flash(f'Solicitud {action}da con éxito.', 'success')
+#     else:
+#         flash('Acción no válida.', 'danger')
+#     return redirect(url_for('sistemas.solicitudes_pendientes'))
 
 
 # ------------------------------------------------------------------------

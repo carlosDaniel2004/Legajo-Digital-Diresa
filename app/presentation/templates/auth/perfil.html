@@ -4,65 +4,244 @@
 
 {% block dashboard_content %}
 <div class="container-fluid px-4">
-    <h1 class="mt-4">Mi Perfil</h1>
-    <ol class="breadcrumb mb-4">
-        <li class="breadcrumb-item active">Información de Cuenta</li>
-    </ol>
+    <!-- Header -->
+    <div class="dashboard-header-titles mb-4">
+        <h2 class="section-title text-primary">MI PERFIL</h2>
+        <h3 class="subsection-title">Información de cuenta y configuración de seguridad</h3>
+    </div>
 
-    <div class="row">
-        <div class="col-xl-4">
-            <div class="card mb-4 shadow-sm">
+    <!-- Información del Usuario -->
+    <div class="row g-4 mb-4">
+        <!-- Tarjeta de Información Principal -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100 border-start border-4 border-primary">
                 <div class="card-header bg-primary text-white">
-                    <i class="fas fa-user me-1"></i> Mis Datos
+                    <h6 class="m-0"><i class="bi bi-person-circle me-2"></i>Información de Cuenta</h6>
                 </div>
                 <div class="card-body text-center">
-                    <img src="{{ url_for('static', filename='img/user_placeholder.png') }}" 
-                         alt="User" class="rounded-circle mb-3 border p-1" width="100">
-                    
-                    <h5 class="fw-bold">{{ user.username }}</h5>
-                    <p class="text-muted mb-2">{{ user.email }}</p>
-                    
-                    {% if user.rol %}
-                    <span class="badge bg-info text-dark">{{ user.rol.nombre }}</span>
+                    <!-- Avatar -->
+                    <div class="mb-3">
+                        <div class="avatar-placeholder rounded-circle bg-primary bg-opacity-10 mx-auto mb-3" style="width: 120px; height: 120px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-person-fill text-primary" style="font-size: 3rem;"></i>
+                        </div>
+                    </div>
+
+                    <!-- Nombre de Usuario -->
+                    <h5 class="fw-bold mb-1">{{ user_data.username }}</h5>
+                    <p class="text-muted small mb-3">
+                        <i class="bi bi-envelope me-1"></i>{{ user_data.email }}
+                    </p>
+
+                    <!-- Rol Badge -->
+                    {% if user_data.rol %}
+                    <div class="mb-3">
+                        <span class="badge bg-info text-dark p-2 fw-semibold">
+                            <i class="bi bi-shield-check me-1"></i>{{ user_data.rol.nombre if user_data.rol.nombre else 'Sin Rol' }}
+                        </span>
+                    </div>
                     {% else %}
-                    <span class="badge bg-secondary">Sin Rol</span>
+                    <div class="mb-3">
+                        <span class="badge bg-secondary p-2">Sin Rol Asignado</span>
+                    </div>
+                    {% endif %}
+
+                    <!-- Estado -->
+                    <hr>
+                    <p class="text-muted small mb-2">
+                        <strong>Estado:</strong>
+                        <span class="badge bg-{% if user_data.estado == 'activo' %}success{% elif user_data.estado == 'inactivo' %}warning{% else %}danger{% endif %}">
+                            {{ user_data.estado | upper }}
+                        </span>
+                    </p>
+
+                    {% if user_data.fecha_registro %}
+                    <p class="text-muted small">
+                        <strong>Registrado:</strong><br>
+                        <small>{{ user_data.fecha_registro.strftime('%d/%m/%Y') if user_data.fecha_registro.strftime else user_data.fecha_registro }}</small>
+                    </p>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-8">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header">
-                    <i class="fas fa-key me-1"></i> Seguridad
+        <!-- Información Personal (si existe) -->
+        {% if user_data.personal_info %}
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100 border-start border-4 border-success">
+                <div class="card-header bg-success text-white">
+                    <h6 class="m-0"><i class="bi bi-file-earmark-text me-2"></i>Datos Personales</h6>
                 </div>
                 <div class="card-body">
-                    <h6 class="mb-3 text-muted">Cambiar Contraseña</h6>
-                    
-                    <form method="POST" action="{{ url_for('auth.perfil') }}">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Nombre Completo</small>
+                        <strong>{{ user_data.personal_info.nombres }}</strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block">DNI</small>
+                        <strong>{{ user_data.personal_info.dni }}</strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Teléfono</small>
+                        <strong>{{ user_data.personal_info.telefono }}</strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Email Personal</small>
+                        <strong class="text-break">{{ user_data.personal_info.email }}</strong>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Cargo</small>
+                        <strong>{{ user_data.personal_info.cargo }}</strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Unidad Administrativa</small>
+                        <strong>{{ user_data.personal_info.unidad_administrativa }}</strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Fecha de Ingreso</small>
+                        <strong>{{ user_data.personal_info.fecha_ingreso }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Información de Seguridad -->
+        <div class="col-lg-{% if user_data.personal_info %}4{% else %}8{% endif %}">
+            <div class="card shadow-sm h-100 border-start border-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="m-0"><i class="bi bi-shield-lock me-2"></i>Seguridad</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3 p-3 bg-light rounded">
+                        <h6 class="mb-2 text-muted">
+                            <i class="bi bi-lock me-2"></i>Autenticación
+                        </h6>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-shield-check text-success me-2" style="font-size: 1.5rem;"></i>
+                            <div>
+                                <small class="d-block fw-semibold">Autenticación de Dos Factores (2FA)</small>
+                                <small class="text-muted">Habilitado en modo producción</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 p-3 bg-light rounded">
+                        <h6 class="mb-2 text-muted">
+                            <i class="bi bi-key me-2"></i>Contraseña
+                        </h6>
+                        <small class="text-muted d-block mb-2">Última actualización: No disponible</small>
+                        <small class="text-muted d-block">Se recomienda cambiar tu contraseña cada 90 días</small>
+                    </div>
+
+                    <div class="alert alert-info p-2 small mb-0" role="alert">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Consejo de Seguridad:</strong> Usa una contraseña fuerte con mayúsculas, minúsculas, números y caracteres especiales.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario de Cambio de Contraseña -->
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm border-start border-4 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="m-0"><i class="bi bi-pencil-square me-2"></i>Cambiar Contraseña</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4 small">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Por tu seguridad, confirma tu contraseña actual antes de cambiarla.
+                    </p>
+
+                    <form method="POST" action="{{ url_for('auth.perfil') }}" novalidate>
                         {% if csrf_token is defined %}
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         {% endif %}
 
-                        <div class="mb-3">
-                            <label class="small mb-1" for="password_actual">Contraseña Actual</label>
-                            <input class="form-control" id="password_actual" name="password_actual" type="password" required>
+                        <!-- Contraseña Actual -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold" for="password_actual">
+                                <i class="bi bi-key-fill me-2 text-muted"></i>Contraseña Actual
+                            </label>
+                            <input 
+                                class="form-control form-control-lg" 
+                                id="password_actual" 
+                                name="password_actual" 
+                                type="password" 
+                                placeholder="Ingresa tu contraseña actual"
+                                required>
+                            <small class="text-muted d-block mt-2">
+                                <i class="bi bi-info-circle me-1"></i>Requerido para verificar tu identidad
+                            </small>
                         </div>
 
-                        <div class="row gx-3 mb-3">
+                        <hr class="my-4">
+
+                        <!-- Nueva Contraseña y Confirmación -->
+                        <div class="row g-3 mb-4">
                             <div class="col-md-6">
-                                <label class="small mb-1" for="password_nueva">Nueva Contraseña</label>
-                                <input class="form-control" id="password_nueva" name="password_nueva" type="password" required minlength="6">
+                                <label class="form-label fw-semibold" for="password_nueva">
+                                    <i class="bi bi-shield-check me-2 text-success"></i>Nueva Contraseña
+                                </label>
+                                <input 
+                                    class="form-control form-control-lg" 
+                                    id="password_nueva" 
+                                    name="password_nueva" 
+                                    type="password" 
+                                    placeholder="Mínimo 8 caracteres"
+                                    minlength="8"
+                                    required>
+                                <small class="text-muted d-block mt-2">
+                                    <i class="bi bi-check-circle me-1"></i>Al menos 8 caracteres
+                                </small>
                             </div>
                             <div class="col-md-6">
-                                <label class="small mb-1" for="password_confirmacion">Confirmar Nueva</label>
-                                <input class="form-control" id="password_confirmacion" name="password_confirmacion" type="password" required>
+                                <label class="form-label fw-semibold" for="password_confirmacion">
+                                    <i class="bi bi-shield-check me-2 text-success"></i>Confirmar Contraseña
+                                </label>
+                                <input 
+                                    class="form-control form-control-lg" 
+                                    id="password_confirmacion" 
+                                    name="password_confirmacion" 
+                                    type="password" 
+                                    placeholder="Repite la nueva contraseña"
+                                    minlength="8"
+                                    required>
+                                <small class="text-muted d-block mt-2">
+                                    <i class="bi bi-check-circle me-1"></i>Debe coincidir exactamente
+                                </small>
                             </div>
                         </div>
 
-                        <div class="d-grid">
-                            <button class="btn btn-primary" type="submit">
-                                Actualizar Contraseña
+                        <!-- Requisitos de Contraseña -->
+                        <div class="alert alert-secondary p-3 mb-4 small">
+                            <h6 class="mb-2"><i class="bi bi-bookmark-check me-2"></i>Requisitos de Contraseña:</h6>
+                            <ul class="mb-0">
+                                <li>✓ Mínimo 8 caracteres</li>
+                                <li>✓ Incluir letras mayúsculas (A-Z)</li>
+                                <li>✓ Incluir letras minúsculas (a-z)</li>
+                                <li>✓ Incluir números (0-9)</li>
+                                <li>✓ Incluir caracteres especiales (!@#$%^&*)</li>
+                            </ul>
+                        </div>
+
+                        <!-- Botones de Acción -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button class="btn btn-outline-secondary btn-lg" type="button" onclick="window.history.back()">
+                                <i class="bi bi-arrow-left me-2"></i>Cancelar
+                            </button>
+                            <button class="btn btn-danger btn-lg" type="submit">
+                                <i class="bi bi-check-circle me-2"></i>Actualizar Contraseña
                             </button>
                         </div>
                     </form>
@@ -71,4 +250,65 @@
         </div>
     </div>
 </div>
+
+<!-- Estilos personalizados -->
+<style>
+    .dashboard-header-titles {
+        border-bottom: 3px solid #0d6efd;
+        padding-bottom: 1.5rem;
+    }
+
+    .section-title {
+        font-weight: 700;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .subsection-title {
+        font-size: 1rem;
+        color: #6c757d;
+        font-weight: 400;
+    }
+
+    .card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border-radius: 8px;
+    }
+
+    .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .form-control, .form-control:focus {
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+    }
+
+    .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+
+    .btn {
+        border-radius: 6px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .avatar-placeholder {
+        border: 3px solid #e9ecef;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .text-break {
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+</style>
 {% endblock %}

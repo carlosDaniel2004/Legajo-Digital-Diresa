@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #f9f9f9;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .welcome-section {
+            margin-bottom: 30px;
+        }
+        .welcome-section h2 {
+            color: #0d6efd;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+        .welcome-section p {
+            margin: 10px 0;
+            color: #555;
+        }
+        .credentials-box {
+            background-color: #f0f7ff;
+            border-left: 4px solid #0d6efd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .credentials-box strong {
+            color: #0d6efd;
+        }
+        .button {
+            display: inline-block;
+            background-color: #0d6efd;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .info-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .footer {
+            text-align: center;
+            color: #888;
+            font-size: 12px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .security-tips {
+            background-color: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .security-tips ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .security-tips li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎉 ¡Bienvenido!</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px;">{{ system_name }}</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Welcome Message -->
+            <div class="welcome-section">
+                <h2>¡Tu cuenta ha sido creada exitosamente!</h2>
+                <p>Hola <strong>{{ username }}</strong>,</p>
+                <p>Tu nueva cuenta en el Sistema de Legajo Digital DIRESA ha sido creada y está lista para usar.</p>
+            </div>
+
+            <!-- How to Access -->
+            <div class="welcome-section">
+                <h2>Cómo Acceder al Sistema</h2>
+                <p>Para acceder al sistema, sigue estos pasos:</p>
+                <ol>
+                    <li>Visita la página de login del sistema</li>
+                    <li>Ingresa tu nombre de usuario: <strong>{{ username }}</strong></li>
+                    <li>Utiliza la contraseña temporal proporcionada por tu administrador</li>
+                    <li>Se te solicitará un código de dos factores (2FA) por email para mayor seguridad</li>
+                </ol>
+            </div>
+
+            <!-- Important Info -->
+            <div class="info-box">
+                <strong>⚠️ Nota Importante:</strong> Tu contraseña fue establecida por tu administrador. Te recomendamos cambiarla en tu primer acceso visitando la sección "Mi Perfil" para una mayor seguridad.
+            </div>
+
+            <!-- Security Tips -->
+            <div class="security-tips">
+                <strong>🔒 Recomendaciones de Seguridad:</strong>
+                <ul>
+                    <li>Utiliza una contraseña fuerte con mayúsculas, minúsculas, números y caracteres especiales</li>
+                    <li>No compartas tu contraseña con nadie</li>
+                    <li>Habilita y utiliza la autenticación de dos factores (2FA)</li>
+                    <li>Cierra sesión cuando termines de usar el sistema en dispositivos compartidos</li>
+                    <li>Mantén tus datos de acceso privados y seguros</li>
+                </ul>
+            </div>
+
+            <!-- Action Button -->
+            <div style="text-align: center;">
+                <a href="#" class="button">Ir al Sistema de Legajo Digital</a>
+            </div>
+
+            <!-- Support -->
+            <div class="welcome-section">
+                <h2>¿Necesitas Ayuda?</h2>
+                <p>Si tienes problemas para acceder al sistema o necesitas asistencia, contacta con el equipo de Sistemas de DIRESA.</p>
+                <p>Tu rol asignado te permitirá acceder a funcionalidades específicas dentro del sistema. Si tienes dudas sobre tus permisos, consulta con tu administrador.</p>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <p>Este es un correo automático. Por favor, no respondas directamente a este mensaje.</p>
+                <p>&copy; 2025 Dirección Regional de Salud (DIRESA). Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
