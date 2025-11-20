@@ -3,6 +3,7 @@
 import random
 import string
 from datetime import datetime, timedelta
+from flask import current_app
 from app.core.security import generate_password_hash
 import logging 
 
@@ -15,7 +16,10 @@ class UsuarioService:
         self._email_service = email_service
 
     def attempt_login(self, username, password):
-        """Verifica las credenciales. Si son válidas, genera y muestra el código 2FA para desarrollo."""
+        """
+        Verifica las credenciales. Si son válidas, envía un código 2FA por correo
+        en producción, o lo imprime en consola para desarrollo.
+        """
         user = self._usuario_repo.find_by_username_with_email(username)
 
         if user and user.activo and user.check_password(password):
@@ -25,13 +29,22 @@ class UsuarioService:
 
             self._usuario_repo.set_2fa_code(user.id, hashed_code, expiry_date)
 
-            print("---------------------------------------------------------")
-            print(f"--- CÓDIGO 2FA (PARA DESARROLLO): {code} ---")
-            print("---------------------------------------------------------")
-            """
-            # --- Lógica de envío de correo 2FA (comentada) ---
-            # ... (código para enviar el email) ...
-            """
+            # --- Lógica Condicional para 2FA ---
+            if not current_app.config.get('DEBUG'):
+                # Modo Producción: Enviar correo electrónico.
+                try:
+                    self._email_service.send_2fa_code(user.email, user.nombre_completo or user.username, code)
+                    logger.info(f"Código 2FA enviado por correo a {user.email}")
+                except Exception as e:
+                    logger.error(f"Fallo al enviar correo 2FA a {user.email}: {e}")
+                    # Si el correo falla, no se debe poder iniciar sesión por seguridad.
+                    return None
+            else:
+                # Modo Desarrollo: Imprimir en consola.
+                print("---------------------------------------------------------")
+                print(f"--- CÓDIGO 2FA (PARA DESARROLLO): {code} ---")
+                print("---------------------------------------------------------")
+            
             return user.id
         
         return None

@@ -59,6 +59,9 @@
             <a href="{{ url_for('rrhh.panel_rrhh') }}" class="list-group-item {% if request.endpoint == 'rrhh.panel_rrhh' %}active{% endif %}">
                 <i class="bi bi-graph-up"></i>Estadísticas
             </a>
+            <a href="{{ url_for('rrhh.exportar_empleados_excel') }}" class="list-group-item {% if request.endpoint == 'rrhh.exportar_empleados_excel' %}active{% endif %}">
+                <i class="bi bi-file-earmark-excel"></i>Exportar a Excel
+            </a>
             {% endif %}
 
             {# --- Opciones para Sistemas --- #}
@@ -70,9 +73,25 @@
                 {% if request.endpoint == 'sistemas.gestionar_usuarios' %}active{% endif %}">
                 <i class="bi bi-person-gear"></i>Gestión de Usuarios
             </a>
+            <a href="{{ url_for('sistemas.estado_servidor') }}" class="list-group-item 
+                {% if request.endpoint == 'sistemas.estado_servidor' %}active{% endif %}">
+                <i class="bi bi-cpu"></i>Monitoreo de Rendimiento
+            </a>
             <a href="{{ url_for('sistemas.gestion_backups') }}" class="list-group-item 
                 {% if 'backups' in request.endpoint %}active{% endif %}">
                 <i class="bi bi-cloud-upload"></i>Backups
+            </a>
+            <a href="{{ url_for('sistemas.solicitudes_pendientes') }}" class="list-group-item 
+                {% if request.endpoint == 'sistemas.solicitudes_pendientes' %}active{% endif %}">
+                <i class="bi bi-bell-fill"></i>Solicitudes Pendientes
+            </a>
+            <a href="{{ url_for('sistemas.errores') }}" class="list-group-item 
+                {% if request.endpoint == 'sistemas.errores' %}active{% endif %}">
+                <i class="bi bi-bug"></i>Registro de Errores
+            </a>
+            <a href="{{ url_for('sistemas.documentos_eliminados') }}" class="list-group-item 
+                {% if request.endpoint == 'sistemas.documentos_eliminados' %}active{% endif %}">
+                <i class="bi bi-trash-fill"></i>Documentos Eliminados
             </a>
             {% endif %}
 

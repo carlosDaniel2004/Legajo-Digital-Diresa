@@ -53,6 +53,24 @@ def load_user(user_id):
         return repo.find_by_id(int(user_id)) 
     return None
 
+def configure_logging(app):
+    """Configura el sistema de logging para la aplicación."""
+    if not app.debug:
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
+        
+        file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
+        
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+        
+        app.logger.setLevel(logging.INFO)
+        app.logger.info('Aplicación iniciada')
+
 def create_app():
     app = Flask(
         __name__,
@@ -62,27 +80,8 @@ def create_app():
     )
     app.config.from_object(Config)
 
-    # --- Configuración de Logging Profesional ---
-    if not app.debug:
-        # Crear el directorio de logs si no existe
-        if not os.path.exists('logs'):
-            os.mkdir('logs')
-        
-        # Configurar un manejador de archivos rotativo
-        file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
-        
-        # Establecer el formato del log
-        file_handler.setFormatter(logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-        ))
-        
-        # Establecer el nivel de log y añadir el manejador a la app
-        file_handler.setLevel(logging.INFO)
-        app.logger.addHandler(file_handler)
-        
-        app.logger.setLevel(logging.INFO)
-        app.logger.info('Aplicación iniciada')
-
+    # Configurar Logging
+    configure_logging(app)
 
     # Inicializar todas las extensiones con la app
     init_app_db(app)

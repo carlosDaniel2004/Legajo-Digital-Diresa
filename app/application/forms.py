@@ -4,6 +4,77 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms.validators import DataRequired, Length, Regexp, Optional, Email, NumberRange, EqualTo, ValidationError
 from wtforms import StringField, PasswordField, SubmitField, SelectField, DateField, TextAreaField, FileField, BooleanField
+from datetime import datetime, timedelta
+
+# ===== VALIDADORES PERSONALIZADOS (ANTES DE LAS CLASES) =====
+
+def validate_password_not_username(form, field):
+    """Valida que la contraseña NO sea igual al nombre de usuario."""
+    if field.data and form.username.data and field.data.lower() == form.username.data.lower():
+        raise ValidationError('La contraseña no puede ser igual al nombre de usuario.')
+
+def validate_password_not_new_username(form, field):
+    """Valida que la nueva contraseña NO sea igual al nuevo nombre de usuario."""
+    if field.data:
+        if form.nueva_username.data and field.data.lower() == form.nueva_username.data.lower():
+            raise ValidationError('La contraseña no puede ser igual al nombre de usuario.')
+        elif not form.nueva_username.data and form.username.data and field.data.lower() == form.username.data.lower():
+            raise ValidationError('La contraseña no puede ser igual al nombre de usuario.')
+
+def validate_fecha_nacimiento(form, field):
+    """Valida que la fecha de nacimiento sea válida: no en el futuro y edad mínima de 18 años."""
+    if field.data:
+        hoy = datetime.now().date()
+        
+        # Validar que no sea en el futuro
+        if field.data > hoy:
+            raise ValidationError('La fecha de nacimiento no puede ser en el futuro.')
+        
+        # Validar que tenga al menos 18 años
+        edad_minima = hoy - timedelta(days=18*365.25)
+        if field.data > edad_minima:
+            raise ValidationError('El empleado debe tener al menos 18 años de edad.')
+        
+        # Validar que no sea demasiado antiguo (más de 100 años)
+        edad_maxima = hoy - timedelta(days=100*365.25)
+        if field.data < edad_maxima:
+            raise ValidationError('La fecha de nacimiento no puede ser hace más de 100 años.')
+
+def validate_fecha_ingreso(form, field):
+    """Valida que la fecha de ingreso sea válida respecto a la fecha de nacimiento e hoy."""
+    if field.data:
+        hoy = datetime.now().date()
+        
+        # Validar que no sea en el futuro
+        if field.data > hoy:
+            raise ValidationError('La fecha de ingreso no puede ser en el futuro.')
+        
+        # Validar que sea después de la fecha de nacimiento
+        if form.fecha_nacimiento.data and field.data < form.fecha_nacimiento.data:
+            raise ValidationError('La fecha de ingreso no puede ser anterior a la fecha de nacimiento.')
+        
+        # Validar que no sea antes de 1950
+        if field.data.year < 1950:
+            raise ValidationError('La fecha de ingreso parece ser demasiado antigua.')
+
+def validate_dni_formato(form, field):
+    """Valida el formato del DNI peruano (8 dígitos)."""
+    if field.data:
+        if not field.data.isdigit() or len(field.data) != 8:
+            raise ValidationError('El DNI debe contener exactamente 8 dígitos numéricos.')
+
+def validate_telefono(form, field):
+    """Valida el formato del teléfono."""
+    if field.data:
+        telefono_limpio = field.data.replace(" ", "").replace("-", "")
+        
+        if not telefono_limpio.isdigit():
+            raise ValidationError('El teléfono solo debe contener números, espacios y guiones.')
+        
+        if len(telefono_limpio) < 7 or len(telefono_limpio) > 15:
+            raise ValidationError('El teléfono debe tener entre 7 y 15 dígitos.')
+
+# ===== FIN DE VALIDADORES PERSONALIZADOS =====
 
 
 class LoginForm(FlaskForm):
@@ -27,26 +98,73 @@ class FiltroPersonalForm(FlaskForm):
 
 class PersonalForm(FlaskForm):
     """Formulario para crear y editar los datos de una persona."""
-    dni = StringField('DNI', validators=[DataRequired(), Length(min=8, max=8, message="El DNI debe tener 8 dígitos.")])
-    nombres = StringField('Nombres', validators=[DataRequired(), Length(max=50)])
-    apellidos = StringField('Apellidos', validators=[DataRequired(), Length(max=50)])
+    dni = StringField('DNI', validators=[
+        DataRequired(message="El DNI es obligatorio."),
+        Length(min=8, max=8, message="El DNI debe tener 8 dígitos."),
+        validate_dni_formato
+    ])
+    nombres = StringField('Nombres', validators=[
+        DataRequired(message="Los nombres son obligatorios."),
+        Length(min=2, max=50, message="Los nombres deben tener entre 2 y 50 caracteres.")
+    ])
+    apellidos = StringField('Apellidos', validators=[
+        DataRequired(message="Los apellidos son obligatorios."),
+        Length(min=2, max=50, message="Los apellidos deben tener entre 2 y 50 caracteres.")
+    ])
     
-    sexo = SelectField('Sexo', choices=[('', '-- Seleccione --'), ('M', 'Masculino'), ('F', 'Femenino')], validators=[DataRequired()])
-    fecha_nacimiento = DateField('Fecha de Nacimiento', format='%Y-%m-%d', validators=[DataRequired()])
-    telefono = StringField('Teléfono', validators=[Length(max=20)])
-    email = StringField('Correo Electrónico', validators=[DataRequired(), Email(), Length(max=100)])
-    direccion = StringField('Dirección', validators=[Length(max=200)])
-    estado_civil = StringField('Estado Civil', validators=[Length(max=20)])
-    nacionalidad = StringField('Nacionalidad', validators=[DataRequired(), Length(max=50)], default='Peruana')
+    sexo = SelectField('Sexo', choices=[('', '-- Seleccione --'), ('M', 'Masculino'), ('F', 'Femenino')], 
+                      validators=[DataRequired(message="Debe seleccionar el sexo.")],
+                      default='')
     
-    id_unidad = SelectField('Unidad Administrativa', coerce=str, validators=[DataRequired(message="Debe seleccionar una unidad.")])
-    fecha_ingreso = DateField('Fecha de Ingreso', format='%Y-%m-%d', validators=[DataRequired()])
+    fecha_nacimiento = DateField('Fecha de Nacimiento', format='%Y-%m-%d', 
+                                validators=[
+                                    DataRequired(message="La fecha de nacimiento es obligatoria."),
+                                    validate_fecha_nacimiento
+                                ])
+    
+    telefono = StringField('Teléfono', validators=[
+        Optional(),
+        Length(max=20, message="El teléfono no debe exceder 20 caracteres."),
+        validate_telefono
+    ])
+    
+    email = StringField('Correo Electrónico', validators=[
+        DataRequired(message="El correo electrónico es obligatorio."),
+        Email(message="Por favor ingrese un correo electrónico válido."),
+        Length(max=100, message="El correo no debe exceder 100 caracteres.")
+    ])
+    
+    direccion = StringField('Dirección', validators=[
+        Optional(),
+        Length(max=200, message="La dirección no debe exceder 200 caracteres.")
+    ])
+    
+    estado_civil = StringField('Estado Civil', validators=[
+        Optional(),
+        Length(max=20, message="El estado civil no debe exceder 20 caracteres.")
+    ])
+    
+    nacionalidad = StringField('Nacionalidad', validators=[
+        DataRequired(message="La nacionalidad es obligatoria."),
+        Length(min=2, max=50, message="La nacionalidad debe tener entre 2 y 50 caracteres.")
+    ], default='Peruana')
+    
+    id_unidad = SelectField('Unidad Administrativa', coerce=str, 
+                           validators=[DataRequired(message="Debe seleccionar una unidad administrativa.")],
+                           default='0')
+    
+    fecha_ingreso = DateField('Fecha de Ingreso', format='%Y-%m-%d', 
+                             validators=[
+                                 DataRequired(message="La fecha de ingreso es obligatoria."),
+                                 validate_fecha_ingreso
+                             ])
     
     submit = SubmitField('Registrar Personal')
 
     def validate_id_unidad(self, field):
-        if field.data == '0':
-            raise ValidationError('Debe seleccionar una unidad válida.')
+        """Valida que se haya seleccionado una unidad válida."""
+        if field.data == '0' or not field.data:
+            raise ValidationError('Debe seleccionar una unidad administrativa válida.')
 
 class DocumentoForm(FlaskForm):
     id_seccion = SelectField('Sección del Legajo', coerce=int, validators=[NumberRange(min=1, message="Debe seleccionar una sección.")])
@@ -58,22 +176,6 @@ class DocumentoForm(FlaskForm):
     ])
     submit = SubmitField('Subir Documento')
 
-# Validador personalizado para contraseña
-def validate_password_not_username(form, field):
-    """Valida que la contraseña NO sea igual al nombre de usuario."""
-    if field.data and form.username.data and field.data.lower() == form.username.data.lower():
-        raise ValidationError('La contraseña no puede ser igual al nombre de usuario.')
-
-def validate_password_not_new_username(form, field):
-    """Valida que la nueva contraseña NO sea igual al nuevo nombre de usuario."""
-    # Solo valida si hay datos en la contraseña y en el nuevo usuario
-    if field.data:
-        # Si se proporcionó nuevo_username, validar contra ese
-        if form.nueva_username.data and field.data.lower() == form.nueva_username.data.lower():
-            raise ValidationError('La contraseña no puede ser igual al nombre de usuario.')
-        # Si NO se proporcionó nuevo_username, validar contra el usuario actual
-        elif not form.nueva_username.data and form.username.data and field.data.lower() == form.username.data.lower():
-            raise ValidationError('La contraseña no puede ser igual al nombre de usuario.')
 
 # 🚨 CLASE AÑADIDA PARA EL MÓDULO DE SISTEMAS (Gestión de Usuarios) 🚨
 class UserManagementForm(FlaskForm):

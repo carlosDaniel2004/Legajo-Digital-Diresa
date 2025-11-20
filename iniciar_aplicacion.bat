@@ -15,7 +15,7 @@ cd /d "%CURRENT_DIR%"
 
 REM Inicia el servidor web de produccion (Waitress) usando el ejecutable del entorno virtual.
 REM Esto es mas robusto que activar el venv primero.
-start "LegajoDigitalServer" /B .\\venv\\Scripts\\waitress-serve.exe --host=127.0.0.1 --port=8080 "run:app"
+start "LegajoDigitalServer" /B .\\venv\\Scripts\\waitress-serve.exe --host=0.0.0.0 --port=5001 "wsgi:app"
 
 REM Espera unos segundos para que el servidor inicie.
 timeout /t 5 /nobreak > nul
