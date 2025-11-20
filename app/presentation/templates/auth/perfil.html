@@ -1,0 +1,74 @@
+{% extends 'layouts/dashboard.html' %}
+
+{% block title %}Mi Perfil{% endblock %}
+
+{% block dashboard_content %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Mi Perfil</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item active">Información de Cuenta</li>
+    </ol>
+
+    <div class="row">
+        <div class="col-xl-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-user me-1"></i> Mis Datos
+                </div>
+                <div class="card-body text-center">
+                    <img src="{{ url_for('static', filename='img/user_placeholder.png') }}" 
+                         alt="User" class="rounded-circle mb-3 border p-1" width="100">
+                    
+                    <h5 class="fw-bold">{{ user.username }}</h5>
+                    <p class="text-muted mb-2">{{ user.email }}</p>
+                    
+                    {% if user.rol %}
+                    <span class="badge bg-info text-dark">{{ user.rol.nombre }}</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Sin Rol</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-8">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header">
+                    <i class="fas fa-key me-1"></i> Seguridad
+                </div>
+                <div class="card-body">
+                    <h6 class="mb-3 text-muted">Cambiar Contraseña</h6>
+                    
+                    <form method="POST" action="{{ url_for('auth.perfil') }}">
+                        {% if csrf_token is defined %}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label class="small mb-1" for="password_actual">Contraseña Actual</label>
+                            <input class="form-control" id="password_actual" name="password_actual" type="password" required>
+                        </div>
+
+                        <div class="row gx-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="small mb-1" for="password_nueva">Nueva Contraseña</label>
+                                <input class="form-control" id="password_nueva" name="password_nueva" type="password" required minlength="6">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small mb-1" for="password_confirmacion">Confirmar Nueva</label>
+                                <input class="form-control" id="password_confirmacion" name="password_confirmacion" type="password" required>
+                            </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button class="btn btn-primary" type="submit">
+                                Actualizar Contraseña
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

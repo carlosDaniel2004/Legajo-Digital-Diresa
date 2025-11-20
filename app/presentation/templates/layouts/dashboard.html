@@ -2,7 +2,6 @@
 
 {% block body_content %}
 <div class="d-flex" id="wrapper">
-    <!-- Sidebar -->
     <div class="prototipo-sidebar d-flex flex-column">
         <div class="sidebar-user-info">
             <h5 class="user-name">{{ current_user.nombre_completo or current_user.username }}</h5>
@@ -99,15 +98,14 @@
             </div>
 
             <div class="header-right-icons">
-                <!-- NOTA: Se eliminó la sección de la campana de notificaciones aquí -->
-
                 <div class="user-dropdown dropdown">
                     <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-person-circle user-icon-header"></i>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end text-small shadow" aria-labelledby="dropdownUser">
-                        <li><a class="dropdown-item" href="#">Mi Perfil</a></li>
-                        <li><a class="dropdown-item" href="#">Configuración</a></li>
+                        
+                        <li><a class="dropdown-item" href="{{ url_for('auth.perfil') }}">Mi Perfil</a></li>
+                        
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Cerrar Sesión</a></li>
                     </ul>
@@ -115,7 +113,6 @@
             </div>
         </header>
 
-        <!-- Bloque de Mensajes Flash -->
         <div class="container-fluid px-4">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}

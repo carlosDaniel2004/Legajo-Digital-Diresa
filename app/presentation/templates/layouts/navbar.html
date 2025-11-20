@@ -1,36 +1,46 @@
 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
 
-    {# 1. Botón de Toggle para Sidebar (Si usas SB Admin o similar) #}
-    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle me-3">
         <i class="fa fa-bars"></i>
     </button>
 
-    {# 2. Aquí puedes añadir el nombre de la aplicación #}
-    <a class="navbar-brand d-none d-sm-block mr-auto" href="{{ url_for('sistemas.dashboard') }}">
+    <a class="navbar-brand d-none d-sm-block me-auto" href="{{ url_for('sistemas.dashboard') }}">
         LEGAJO DIGITAL - SISTEMAS
     </a>
 
-    {# 3. Información del Usuario (Derecha) #}
-    <ul class="navbar-nav ml-auto">
+    <ul class="navbar-nav ms-auto">
+
+        <div class="topbar-divider d-none d-sm-block"></div>
 
         <li class="nav-item dropdown no-arrow">
-            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ current_user.username }}</span>
-                {# Aquí puedes añadir una imagen de perfil si la tienes #}
-                <img class="img-profile rounded-circle" src="{{ url_for('static', filename='img/undraw_profile.svg') }}">
-            </a>
-            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+               data-bs-toggle="dropdown" aria-expanded="false">
                 
-                {# Enlace al perfil de usuario (Pendiente de ruta) #}
-                <a class="dropdown-item" href="#">
-                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                    Perfil
+                <span class="me-2 d-none d-lg-inline text-gray-600 small">
+                    {% if current_user.is_authenticated %}
+                        {{ current_user.username }}
+                    {% else %}
+                        Usuario
+                    {% endif %}
+                </span>
+                
+                <img class="img-profile rounded-circle"
+                     src="{{ url_for('static', filename='img/user_placeholder.png') }}"
+                     alt="Perfil">
+            </a>
+            
+            <div class="dropdown-menu dropdown-menu-end shadow animated--grow-in"
+                 aria-labelledby="userDropdown">
+                
+                <a class="dropdown-item" href="{{ url_for('auth.perfil') }}">
+                    <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>
+                    Mi Perfil
                 </a>
+                
                 <div class="dropdown-divider"></div>
                 
-                {# Enlace de Cerrar Sesión #}
                 <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
-                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                    <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-gray-400"></i>
                     Cerrar Sesión
                 </a>
             </div>

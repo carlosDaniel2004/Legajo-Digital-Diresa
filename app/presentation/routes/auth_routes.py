@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_user, logout_user, current_user
 from app.application.forms import LoginForm, TwoFactorForm
 from app import limiter
+from app.application.services.usuario_service import UsuarioService
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -89,3 +90,57 @@ def logout():
     logout_user()
     flash('Has cerrado la sesión correctamente.', 'info')
     return redirect(url_for('auth.login'))
+
+from flask import render_template, request, flash, redirect, url_for
+from flask_login import login_required, current_user
+from app.application.services.usuario_service import UsuarioService # Asegúrate de importar el servicio
+from werkzeug.security import generate_password_hash
+
+@auth_bp.route('/perfil', methods=['GET', 'POST'])
+@login_required
+def perfil():
+    """
+    Muestra el perfil del usuario y permite cambiar la contraseña.
+    """
+    if request.method == 'POST':
+        password_actual = request.form.get('password_actual')
+        password_nueva = request.form.get('password_nueva')
+        password_confirmacion = request.form.get('password_confirmacion')
+
+        # Validaciones básicas
+        if not password_actual or not password_nueva or not password_confirmacion:
+            flash('Todos los campos son obligatorios.', 'warning')
+            return redirect(url_for('auth.perfil'))
+
+        if password_nueva != password_confirmacion:
+            flash('Las nuevas contraseñas no coinciden.', 'danger')
+            return redirect(url_for('auth.perfil'))
+
+        # Verificar contraseña actual
+        # Nota: check_password debe ser un método de tu modelo User (UserMixin)
+        if not current_user.check_password(password_actual):
+            flash('La contraseña actual es incorrecta.', 'danger')
+            return redirect(url_for('auth.perfil'))
+
+        try:
+            # Actualizar contraseña usando el servicio
+            # Asumimos que 'USUARIO_SERVICE' está registrado en la config, igual que 'LEGAJO_SERVICE'
+            usuario_service = current_app.config.get('USUARIO_SERVICE')
+            
+            if usuario_service:
+                # Encriptamos antes de enviar o el servicio lo hace (depende de tu lógica).
+                # Aquí asumiremos que el servicio espera el hash o lo hashea él mismo.
+                # Si tu servicio espera texto plano y él lo hashea:
+                usuario_service.update_password(current_user.id, password_nueva) 
+            else:
+                # Fallback si el servicio no está en config (Actualización directa manual)
+                current_user.password_hash = generate_password_hash(password_nueva)
+                from app import db # Importación tardía para evitar ciclos
+                db.session.commit()
+
+            flash('¡Contraseña actualizada correctamente!', 'success')
+        except Exception as e:
+            current_app.logger.error(f"Error al cambiar password: {str(e)}")
+            flash('Ocurrió un error al actualizar la contraseña.', 'danger')
+
+    return render_template('auth/perfil.html', user=current_user)
