@@ -150,9 +150,66 @@
         </div>
     </div>
 
-    <!-- Formulario de Cambio de Contraseña -->
+    <!-- Formularios de Cambio de Email y Contraseña -->
     <div class="row">
         <div class="col-lg-8 mx-auto">
+            <!-- Cambiar Email -->
+            <div class="card shadow-sm border-start border-4 border-info mb-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="m-0"><i class="bi bi-envelope-check me-2"></i>Cambiar Correo Electrónico</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4 small">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Tu correo electrónico se utiliza para notificaciones y recuperación de cuenta.
+                    </p>
+
+                    <form method="POST" action="{{ url_for('auth.cambiar_email') }}" novalidate>
+                        {% if csrf_token is defined %}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% endif %}
+
+                        <!-- Email Actual -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="email_actual">
+                                <i class="bi bi-envelope-fill me-2 text-muted"></i>Email Actual
+                            </label>
+                            <input 
+                                class="form-control form-control-lg" 
+                                id="email_actual" 
+                                type="email" 
+                                value="{{ user_data.email }}"
+                                disabled>
+                        </div>
+
+                        <!-- Nuevo Email -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="email_nuevo">
+                                <i class="bi bi-envelope me-2 text-info"></i>Nuevo Email
+                            </label>
+                            <input 
+                                class="form-control form-control-lg" 
+                                id="email_nuevo" 
+                                name="email_nuevo" 
+                                type="email" 
+                                placeholder="Ingresa tu nuevo correo electrónico"
+                                required>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('email-form').style.display='none'">
+                                <i class="bi bi-x-circle me-2"></i>Cancelar
+                            </button>
+                            <button class="btn btn-info" type="submit">
+                                <i class="bi bi-check-circle me-2"></i>Actualizar Email
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Cambiar Contraseña -->
             <div class="card shadow-sm border-start border-4 border-danger">
                 <div class="card-header bg-danger text-white">
                     <h6 class="m-0"><i class="bi bi-pencil-square me-2"></i>Cambiar Contraseña</h6>
@@ -173,13 +230,18 @@
                             <label class="form-label fw-semibold" for="password_actual">
                                 <i class="bi bi-key-fill me-2 text-muted"></i>Contraseña Actual
                             </label>
-                            <input 
-                                class="form-control form-control-lg" 
-                                id="password_actual" 
-                                name="password_actual" 
-                                type="password" 
-                                placeholder="Ingresa tu contraseña actual"
-                                required>
+                            <div class="input-group input-group-lg">
+                                <input 
+                                    class="form-control" 
+                                    id="password_actual" 
+                                    name="password_actual" 
+                                    type="password" 
+                                    placeholder="Ingresa tu contraseña actual"
+                                    required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('password_actual')">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
                             <small class="text-muted d-block mt-2">
                                 <i class="bi bi-info-circle me-1"></i>Requerido para verificar tu identidad
                             </small>
@@ -193,14 +255,19 @@
                                 <label class="form-label fw-semibold" for="password_nueva">
                                     <i class="bi bi-shield-check me-2 text-success"></i>Nueva Contraseña
                                 </label>
-                                <input 
-                                    class="form-control form-control-lg" 
-                                    id="password_nueva" 
-                                    name="password_nueva" 
-                                    type="password" 
-                                    placeholder="Mínimo 8 caracteres"
-                                    minlength="8"
-                                    required>
+                                <div class="input-group input-group-lg">
+                                    <input 
+                                        class="form-control" 
+                                        id="password_nueva" 
+                                        name="password_nueva" 
+                                        type="password" 
+                                        placeholder="Mínimo 8 caracteres"
+                                        minlength="8"
+                                        required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('password_nueva')">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
                                 <small class="text-muted d-block mt-2">
                                     <i class="bi bi-check-circle me-1"></i>Al menos 8 caracteres
                                 </small>
@@ -209,14 +276,19 @@
                                 <label class="form-label fw-semibold" for="password_confirmacion">
                                     <i class="bi bi-shield-check me-2 text-success"></i>Confirmar Contraseña
                                 </label>
-                                <input 
-                                    class="form-control form-control-lg" 
-                                    id="password_confirmacion" 
-                                    name="password_confirmacion" 
-                                    type="password" 
-                                    placeholder="Repite la nueva contraseña"
-                                    minlength="8"
-                                    required>
+                                <div class="input-group input-group-lg">
+                                    <input 
+                                        class="form-control" 
+                                        id="password_confirmacion" 
+                                        name="password_confirmacion" 
+                                        type="password" 
+                                        placeholder="Repite la nueva contraseña"
+                                        minlength="8"
+                                        required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('password_confirmacion')">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
                                 <small class="text-muted d-block mt-2">
                                     <i class="bi bi-check-circle me-1"></i>Debe coincidir exactamente
                                 </small>
@@ -311,4 +383,46 @@
         overflow-wrap: break-word;
     }
 </style>
+
+<script>
+    /**
+     * Alterna la visibilidad de un campo de contraseña
+     * @param {string} fieldId - El ID del input de tipo password
+     */
+    function togglePasswordVisibility(fieldId) {
+        const field = document.getElementById(fieldId);
+        const button = event.currentTarget;
+        const icon = button.querySelector('i');
+        
+        if (field.type === 'password') {
+            field.type = 'text';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+            button.classList.add('active');
+        } else {
+            field.type = 'password';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+            button.classList.remove('active');
+        }
+    }
+
+    // Validar coincidencia de contraseñas en tiempo real
+    const passwordNueva = document.getElementById('password_nueva');
+    const passwordConfirmacion = document.getElementById('password_confirmacion');
+
+    if (passwordConfirmacion) {
+        passwordConfirmacion.addEventListener('input', function() {
+            if (passwordNueva.value && passwordConfirmacion.value) {
+                if (passwordNueva.value === passwordConfirmacion.value) {
+                    passwordConfirmacion.classList.remove('is-invalid');
+                    passwordConfirmacion.classList.add('is-valid');
+                } else {
+                    passwordConfirmacion.classList.remove('is-valid');
+                    passwordConfirmacion.classList.add('is-invalid');
+                }
+            }
+        });
+    }
+</script>
 {% endblock %}

@@ -1,7 +1,7 @@
 # RUTA: app/presentation/routes/auth_routes.py
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
-from flask_login import login_user, logout_user, current_user
+from flask_login import login_user, logout_user, current_user, login_required
 from app.application.forms import LoginForm, TwoFactorForm
 from app import limiter
 from app.application.services.usuario_service import UsuarioService
@@ -19,10 +19,16 @@ def login():
     if form.validate_on_submit():
         try:
             usuario_service = current_app.config['USUARIO_SERVICE']
-            user_id = usuario_service.attempt_login(form.username.data, form.password.data)
+            result = usuario_service.attempt_login(form.username.data, form.password.data)
 
-            if user_id:
-                session['2fa_user_id'] = user_id
+            # Verificar si result es una tupla (error de email)
+            if isinstance(result, tuple) and result[0] == 'email_error':
+                flash(f'⚠️ {result[1]}', 'warning')
+                return redirect(url_for('auth.login'))
+            
+            # Si result es un ID de usuario, proceder con 2FA
+            if result:
+                session['2fa_user_id'] = result
                 session['2fa_username'] = form.username.data
                 # Guardar el estado de "Recordarme" en la sesión
                 session['2fa_remember_me'] = form.remember_me.data
@@ -82,6 +88,30 @@ def verify_2fa():
             flash('Código de verificación incorrecto o expirado.', 'danger')
 
     return render_template('auth/verify_2fa.html', form=form, username=session.get('2fa_username'))
+
+@auth_bp.route('/cambiar-email', methods=['POST'])
+@login_required
+def cambiar_email():
+    """Ruta para cambiar el email del usuario actual"""
+    email_nuevo = request.form.get('email_nuevo', '').strip()
+    
+    if not email_nuevo:
+        flash('Por favor, ingresa un nuevo email.', 'danger')
+        return redirect(url_for('auth.perfil'))
+    
+    if email_nuevo == current_user.email:
+        flash('El nuevo email es igual al actual.', 'warning')
+        return redirect(url_for('auth.perfil'))
+    
+    try:
+        usuario_service = current_app.config['USUARIO_SERVICE']
+        mensaje, tipo = usuario_service.update_email(current_user.id, email_nuevo)
+        flash(mensaje, tipo)
+    except Exception as e:
+        current_app.logger.error(f"Error al cambiar email del usuario {current_user.id}: {e}")
+        flash('Ocurrió un error al actualizar el email.', 'danger')
+    
+    return redirect(url_for('auth.perfil'))
 
 @auth_bp.route('/logout')
 def logout():

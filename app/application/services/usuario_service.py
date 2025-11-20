@@ -19,6 +19,11 @@ class UsuarioService:
         """
         Verifica las credenciales. Si son válidas, envía un código 2FA por correo
         en producción, o lo imprime en consola para desarrollo.
+        
+        Retorna:
+            - user_id (int): Si el login fue exitoso
+            - None: Si las credenciales son inválidas
+            - ('email_error', str): Tupla si falla el envío de email
         """
         user = self._usuario_repo.find_by_username_with_email(username)
 
@@ -37,8 +42,8 @@ class UsuarioService:
                     logger.info(f"Código 2FA enviado por correo a {user.email}")
                 except Exception as e:
                     logger.error(f"Fallo al enviar correo 2FA a {user.email}: {e}")
-                    # Si el correo falla, no se debe poder iniciar sesión por seguridad.
-                    return None
+                    # Retornar tupla indicando error de email
+                    return ('email_error', f"No se pudo enviar el código de verificación a {user.email}. Por favor, verifica tu correo electrónico o contacta al administrador.")
             else:
                 # Modo Desarrollo: Imprimir en consola.
                 print("---------------------------------------------------------")
@@ -115,6 +120,23 @@ class UsuarioService:
         except Exception as e:
             logger.error(f"Error al actualizar la contraseña del usuario {user_id}: {e}")
             return f"Error al actualizar la contraseña: {e}", "danger"
+
+    def reset_user_password(self, user_id):
+        """Resetea la contraseña de un usuario a una contraseña temporal predeterminada."""
+        try:
+            # Contraseña temporal por defecto
+            temporary_password = "Temporal123!"
+            password_hash = generate_password_hash(temporary_password)
+            self._usuario_repo.update_user_password(user_id, password_hash)
+            logger.info(f"Contraseña del usuario {user_id} reseteada a temporal")
+            return "La contraseña ha sido reseteada correctamente.", "success"
+        except Exception as e:
+            logger.error(f"Error al resetear la contraseña del usuario {user_id}: {e}")
+            return f"Error al resetear la contraseña: {e}", "danger"
+
+    def update_password(self, user_id, new_password):
+        """Alias para update_user_password - Actualiza la contraseña de un usuario."""
+        return self.update_user_password(user_id, new_password)
 
     def update_username(self, user_id, new_username):
         """Actualiza el nombre de usuario."""

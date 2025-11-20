@@ -129,7 +129,7 @@ def create_app():
         content_security_policy=csp,
         # Silencia el aviso de 'browsing-topics'
         permissions_policy={'browsing-topics': '()'},
-        force_https=not app.config['DEBUG'],
+        force_https=False,  # Desactivar HTTPS para desarrollo
         content_security_policy_nonce_in=['script-src']
     )
 
@@ -184,21 +184,16 @@ def create_app():
         app.register_blueprint(error_bp) # <-- Registrar el blueprint de errores
 
         @app.route('/')
-        @login_required
         def index():
-            # Lógica de redirección inteligente basada en el rol del usuario.
-            if current_user.rol == 'Sistemas':
-                return redirect(url_for('sistemas.dashboard'))
-            elif current_user.rol == 'RRHH':
-                return redirect(url_for('rrhh.inicio_rrhh'))
-            elif current_user.rol == 'AdministradorLegajos':
-                return redirect(url_for('legajo.dashboard'))
-            else:
-                # Si el usuario tiene un rol no reconocido o no tiene rol,
-                # se le desloguea por seguridad.
-                logout_user()
-                flash("Su rol de usuario no tiene una página de inicio asignada. Se ha cerrado la sesión.", "warning")
-                return redirect(url_for('auth.login'))
+            # Redirigir directamente a login sin verificar autenticación
+            # para evitar problemas con current_user en primer acceso
+            return redirect(url_for('auth.login'))
+
+        @app.route('/health')
+        def health():
+            """Endpoint de salud para verificar que el servidor está activo"""
+            from flask import jsonify
+            return jsonify({'status': 'ok', 'message': 'Servidor activo'})
 
         # Se elimina la ruta /dashboard conflictiva.
         # La lógica de redirección ahora está centralizada en la ruta raíz ('/').

@@ -7,6 +7,27 @@
     <h3 class="subsection-title">Administración de cuentas de usuario</h3>
 </div>
 
+<style>
+    .table-actions {
+        min-width: 200px;
+        white-space: nowrap;
+    }
+    .table-actions .btn {
+        margin-right: 5px;
+        margin-bottom: 5px;
+    }
+    @media (max-width: 768px) {
+        .table-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .table-actions form {
+            display: block !important;
+        }
+    }
+</style>
+
 <div class="card shadow">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>Listado de Usuarios</span>
@@ -44,9 +65,10 @@
                                 <span class="badge bg-danger">Inactivo</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td class="table-actions">
                             <a href="{{ url_for('sistemas.editar_usuario', user_id=user.id) }}" class="btn btn-sm btn-warning">Editar</a>
-                            <form method="POST" action="{{ url_for('sistemas.reset_password', user_id=user.id) }}" style="display:inline;">
+                            <form method="POST" action="{{ url_for('sistemas.reset_password', user_id=user.id) }}" style="display:inline-block;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Está seguro de resetear la contraseña de {{ user.username }}?')">Resetear</button>
                             </form>
                         </td>

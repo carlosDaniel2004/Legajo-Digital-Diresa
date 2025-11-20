@@ -156,8 +156,8 @@ def editar_usuario(user_id):
 def reset_password(user_id):
     try:
         usuario_service = current_app.config['USUARIO_SERVICE']
-        usuario_service.reset_user_password(user_id) 
-        flash('Contraseña reseteada con éxito. El usuario deberá cambiarla al iniciar sesión.', 'success')
+        mensaje, tipo = usuario_service.reset_user_password(user_id)
+        flash(mensaje, tipo)
     except Exception as e:
         current_app.logger.error(f"Error al resetear contraseña del usuario {user_id}: {e}")
         flash('Ocurrió un error técnico al resetear la contraseña.', 'danger')
