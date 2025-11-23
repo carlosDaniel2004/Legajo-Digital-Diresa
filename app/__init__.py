@@ -8,6 +8,8 @@ from flask import Flask, redirect, url_for, current_app, render_template, flash
 from flask_login import LoginManager, current_user, login_required, logout_user
 from flask_wtf.csrf import CSRFProtect
 from flask_mail import Mail
+from app.presentation.routes.personal_routes import personal_bp
+
 
 # Seguridad: Importar las nuevas extensiones
 from flask_talisman import Talisman
@@ -176,7 +178,6 @@ def create_app():
         from .presentation.routes.rrhh_routes import rrhh_bp
         from .presentation.routes.error_routes import error_bp
         from .presentation.routes.personal_routes import personal_bp # <-- Nuevo blueprint para empleados
-
         # Registrar Blueprints
         app.register_blueprint(auth_bp)
         app.register_blueprint(legajo_bp)

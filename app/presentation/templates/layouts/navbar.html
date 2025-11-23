@@ -1,51 +1,115 @@
-<nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+<!-- Sidebar -->
+<ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
-    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle me-3">
-        <i class="fa fa-bars"></i>
-    </button>
-
-    <a class="navbar-brand d-none d-sm-block me-auto" href="{{ url_for('sistemas.dashboard') }}">
-        LEGAJO DIGITAL - SISTEMAS
+    <!-- Sidebar - Brand -->
+    <a class="sidebar-brand d-flex align-items-center justify-content-center" href="#">
+        <div class="sidebar-brand-icon rotate-n-15">
+            <i class="fas fa-file-medical-alt"></i>
+        </div>
+        <div class="sidebar-brand-text mx-3">Legajo Digital <sup>DIRESA</sup></div>
     </a>
 
-    <ul class="navbar-nav ms-auto">
+    <!-- Divider -->
+    <hr class="sidebar-divider my-0">
 
-        <div class="topbar-divider d-none d-sm-block"></div>
+    <!-- LOGICA DE MENÚ SEGÚN ROL -->
 
-        <li class="nav-item dropdown no-arrow">
-            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
-               data-bs-toggle="dropdown" aria-expanded="false">
-                
-                <span class="me-2 d-none d-lg-inline text-gray-600 small">
-                    {% if current_user.is_authenticated %}
-                        {{ current_user.username }}
-                    {% else %}
-                        Usuario
-                    {% endif %}
-                </span>
-                
-                <img class="img-profile rounded-circle"
-                     src="{{ url_for('static', filename='img/user_placeholder.png') }}"
-                     alt="Perfil">
-            </a>
-            
-            <div class="dropdown-menu dropdown-menu-end shadow animated--grow-in"
-                 aria-labelledby="userDropdown">
-                
-                <a class="dropdown-item" href="{{ url_for('auth.perfil') }}">
-                    <i class="fas fa-user fa-sm fa-fw me-2 text-gray-400"></i>
-                    Mi Perfil
-                </a>
-                
-                <div class="dropdown-divider"></div>
-                
-                <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
-                    <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-gray-400"></i>
-                    Cerrar Sesión
-                </a>
+    <!-- 1. ROL ADMIN SISTEMAS (ID 3) -->
+    {% if current_user.rol == 'Administrador Sistemas' or current_user.id_rol == 3 %}
+    <div class="sidebar-heading mt-2">Sistemas</div>
+    
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('sistemas.dashboard') }}">
+            <i class="fas fa-fw fa-tachometer-alt"></i>
+            <span>Dashboard</span></a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('sistemas.gestionar_usuarios') }}">
+            <i class="fas fa-fw fa-users-cog"></i>
+            <span>Usuarios</span></a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('sistemas.auditoria') }}">
+            <i class="fas fa-fw fa-list-alt"></i>
+            <span>Auditoría</span></a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('sistemas.gestion_backups') }}">
+            <i class="fas fa-fw fa-database"></i>
+            <span>Backups</span></a>
+    </li>
+    {% endif %}
+
+    <!-- 2. ROL RRHH (ID 2) O ADMIN LEGAJOS (ID 1) -->
+    {% if current_user.rol in ['RRHH', 'Administrador Legajos'] or current_user.id_rol in [1, 2] %}
+    <div class="sidebar-heading mt-2">Recursos Humanos</div>
+
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('rrhh.inicio') }}">
+            <i class="fas fa-fw fa-tachometer-alt"></i>
+            <span>Dashboard RRHH</span></a>
+    </li>
+
+    <!-- Menú Colapsable Personal -->
+    <li class="nav-item">
+        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePersonal" aria-expanded="true">
+            <i class="fas fa-fw fa-users"></i>
+            <span>Gestión Personal</span>
+        </a>
+        <div id="collapsePersonal" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <h6 class="collapse-header">Acciones:</h6>
+                <a class="collapse-item" href="{{ url_for('rrhh.listar_personal') }}">Directorio</a>
+                <a class="collapse-item" href="{{ url_for('rrhh.crear_personal') }}">Nuevo Ingreso</a>
             </div>
-        </li>
+        </div>
+    </li>
 
-    </ul>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('reportes.generar_reporte') }}">
+            <i class="fas fa-fw fa-chart-bar"></i>
+            <span>Reportes</span></a>
+    </li>
+    {% endif %}
 
-</nav>
+    <!-- 3. ROL PERSONAL (ID 4 o nombre 'Personal') -->
+    {% if current_user.rol == 'Personal' or current_user.id_rol == 4 %}
+    <div class="sidebar-heading mt-2">Mi Información</div>
+
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('personal.inicio') }}">
+            <i class="fas fa-fw fa-home"></i>
+            <span>Mi Panel</span></a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('personal.ver_mi_legajo') }}">
+            <i class="fas fa-fw fa-folder-open"></i>
+            <span>Mi Legajo Digital</span></a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMisDatos" aria-expanded="true">
+            <i class="fas fa-fw fa-user-cog"></i>
+            <span>Mis Trámites</span>
+        </a>
+        <div id="collapseMisDatos" class="collapse" aria-labelledby="headingUtilities" data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <a class="collapse-item" href="{{ url_for('personal.actualizar_datos') }}">Actualizar Datos</a>
+                <a class="collapse-item" href="{{ url_for('personal.solicitar_cancelacion') }}">Cancelar Datos</a>
+                <a class="collapse-item" href="{{ url_for('personal.derecho_oposicion') }}">Oposición</a>
+            </div>
+        </div>
+    </li>
+    {% endif %}
+
+    <!-- Divider -->
+    <hr class="sidebar-divider d-none d-md-block">
+
+    <!-- Sidebar Toggler -->
+    <div class="text-center d-none d-md-inline">
+        <button class="rounded-circle border-0" id="sidebarToggle"></button>
+    </div>
+
+</ul>
+<!-- End of Sidebar -->

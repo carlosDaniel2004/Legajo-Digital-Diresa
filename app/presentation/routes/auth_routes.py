@@ -102,7 +102,7 @@ def verify_2fa():
             elif user.rol == 'AdministradorLegajos':
                 return redirect(url_for('legajo.dashboard'))
             elif user.rol == 'Personal':
-                return redirect(url_for('personal.inicio_personal'))
+                return redirect(url_for('personal.inicio'))
             else:
                 # Redirige a una página de índice general si el rol no coincide
                 return redirect(url_for('index'))
