@@ -1,0 +1,954 @@
+/* ============================================
+   MEJORAS DE DISEÑO - Legajo Digital DIRESA
+   Complemento sutil al CSS existente (prototipo_style.css)
+   NO REEMPLAZA, SOLO MEJORA
+   ============================================ */
+
+/* ============================================
+   VARIABLE COMPARTIDAS (Complementarias)
+   ============================================ */
+
+:root {
+    /* Colores de transición suave */
+    --transition-smooth: all 0.3s ease;
+    --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-dark: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   MEJORAS SUTILES A CARDS
+   ============================================ */
+
+.card {
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px !important;
+    box-shadow: var(--shadow-light) !important;
+    transition: var(--transition-smooth) !important;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-medium) !important;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #335a9a, #4a7ba7) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    border: none !important;
+    padding: 1rem 1.25rem !important;
+    border-radius: 8px 8px 0 0 !important;
+}
+
+.card-header i {
+    margin-right: 0.5rem;
+}
+
+.card-body {
+    padding: 1.5rem !important;
+}
+
+.card-footer {
+    background-color: #f9fafb !important;
+    border-top: 1px solid #e5e7eb !important;
+    padding: 0.75rem 1.25rem !important;
+}
+
+/* ============================================
+   MEJORAS A TABLAS
+   ============================================ */
+
+.table {
+    border-collapse: collapse !important;
+}
+
+.table thead th {
+    background: linear-gradient(135deg, #335a9a, #4a7ba7) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    border: none !important;
+    padding: 1rem !important;
+}
+
+.table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f9fafb !important;
+}
+
+.table tbody td {
+    padding: 0.75rem 1rem !important;
+    border-color: #e5e7eb !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(51, 90, 154, 0.02) !important;
+}
+
+/* ============================================
+   MEJORAS A BOTONES
+   ============================================ */
+
+.btn {
+    border-radius: 6px !important;
+    font-weight: 500 !important;
+    transition: var(--transition-smooth) !important;
+    border: none !important;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #335a9a, #4a7ba7) !important;
+    color: white !important;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2a477a, #3a6a87) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(51, 90, 154, 0.3) !important;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #15803d, #16a34a) !important;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc2626, #ef4444) !important;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #b91c1c, #dc2626) !important;
+}
+
+.btn-sm {
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.875rem !important;
+}
+
+/* ============================================
+   MEJORAS A FORMULARIOS
+   ============================================ */
+
+.form-control {
+    border: 1px solid #d1d5db !important;
+    border-radius: 6px !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.95rem !important;
+    transition: var(--transition-smooth) !important;
+}
+
+.form-control:focus {
+    border-color: #335a9a !important;
+    box-shadow: 0 0 0 3px rgba(51, 90, 154, 0.1) !important;
+    outline: none !important;
+}
+
+.form-control:disabled {
+    background-color: #f3f4f6 !important;
+    cursor: not-allowed !important;
+}
+
+.form-label {
+    font-weight: 500 !important;
+    color: #333 !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.form-text {
+    font-size: 0.85rem !important;
+    color: #6b7280 !important;
+}
+
+.invalid-feedback {
+    color: #dc2626 !important;
+    font-size: 0.85rem !important;
+    display: block !important;
+    margin-top: 0.25rem !important;
+}
+
+select.form-control {
+    appearance: none !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23335a9a' d='M6 9L1 4h10z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    padding-right: 2.5rem !important;
+}
+
+/* ============================================
+   MEJORAS A ALERTAS
+   ============================================ */
+
+.alert {
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 1rem 1.25rem !important;
+    display: flex !important;
+    gap: 1rem !important;
+    align-items: flex-start !important;
+}
+
+.alert i {
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+}
+
+.alert-success {
+    background-color: #dcfce7 !important;
+    color: #166534 !important;
+    border-left: 4px solid #16a34a !important;
+}
+
+.alert-danger {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+    border-left: 4px solid #dc2626 !important;
+}
+
+.alert-warning {
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+    border-left: 4px solid #ea580c !important;
+}
+
+.alert-info {
+    background-color: #dbeafe !important;
+    color: #0c4a6e !important;
+    border-left: 4px solid #0284c7 !important;
+}
+
+/* ============================================
+   MEJORAS A BADGES
+   ============================================ */
+
+.badge {
+    padding: 0.4rem 0.8rem !important;
+    border-radius: 4px !important;
+    font-weight: 500 !important;
+    font-size: 0.8rem !important;
+}
+
+.badge-success {
+    background-color: #dcfce7 !important;
+    color: #166534 !important;
+}
+
+.badge-danger {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+}
+
+.badge-warning {
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+}
+
+.badge-info {
+    background-color: #dbeafe !important;
+    color: #0c4a6e !important;
+}
+
+/* ============================================
+   MEJORAS A BREADCRUMB
+   ============================================ */
+
+.breadcrumb {
+    background-color: transparent !important;
+    padding: 0.75rem 0 !important;
+    margin-bottom: 1.5rem !important;
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+.breadcrumb-item {
+    color: #6b7280 !important;
+}
+
+.breadcrumb-item a {
+    color: #335a9a !important;
+    text-decoration: none !important;
+    transition: color 0.3s ease;
+}
+
+.breadcrumb-item a:hover {
+    color: #2a477a !important;
+    text-decoration: underline !important;
+}
+
+.breadcrumb-item.active {
+    color: #1f2937 !important;
+}
+
+/* ============================================
+   MEJORAS A MODALES
+   ============================================ */
+
+.modal-header {
+    background: linear-gradient(135deg, #335a9a, #4a7ba7) !important;
+    color: white !important;
+    border: none !important;
+    padding: 1.25rem !important;
+}
+
+.modal-header .btn-close {
+    filter: brightness(0) invert(1) !important;
+}
+
+.modal-body {
+    padding: 1.5rem !important;
+}
+
+.modal-footer {
+    background-color: #f9fafb !important;
+    border-top: 1px solid #e5e7eb !important;
+    padding: 1rem !important;
+}
+
+/* ============================================
+   MEJORAS A PÁGINA DE ENCABEZADO
+   ============================================ */
+
+.page-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding-bottom: 1.5rem !important;
+    border-bottom: 2px solid #e5e7eb !important;
+    margin-bottom: 2rem !important;
+}
+
+.page-header h1 {
+    color: #335a9a !important;
+    font-weight: 700 !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.page-header p {
+    color: #6b7280 !important;
+    margin: 0 !important;
+}
+
+/* ============================================
+   EFECTOS DE SOMBRA
+   ============================================ */
+
+.shadow-sm {
+    box-shadow: var(--shadow-light) !important;
+}
+
+.shadow-md {
+    box-shadow: var(--shadow-medium) !important;
+}
+
+.shadow-lg {
+    box-shadow: var(--shadow-dark) !important;
+}
+
+/* ============================================
+   ANIMACIONES SUTILES
+   ============================================ */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.slide-in-left {
+    animation: slideInLeft 0.3s ease-out;
+}
+
+/* ============================================
+   UTILITARIOS
+   ============================================ */
+
+.text-primary {
+    color: #335a9a !important;
+}
+
+.text-muted {
+    color: #6b7280 !important;
+}
+
+.bg-light {
+    background-color: #f9fafb !important;
+}
+
+.border-top {
+    border-top: 1px solid #e5e7eb !important;
+}
+
+.border-bottom {
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+.rounded {
+    border-radius: 6px !important;
+}
+
+.rounded-lg {
+    border-radius: 8px !important;
+}
+
+/* ============================================
+   RESPONSIVIDAD
+   ============================================ */
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 1rem !important;
+    }
+    
+    .btn {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .card {
+        margin-bottom: 1rem !important;
+    }
+    
+    .table {
+        font-size: 0.875rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .btn-group {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+    }
+    
+    .btn-group .btn {
+        width: 100% !important;
+    }
+    
+    .form-control,
+    .btn {
+        font-size: 16px !important;
+    }
+}
+
+/* ============================================
+   FIN DEL ARCHIVO
+   ============================================ */
+
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.8) !important;
+    transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+    color: white !important;
+}
+
+/* ============================================
+   SIDEBAR MEJORADA
+   ============================================ */
+
+#sidebar-wrapper {
+    background: linear-gradient(180deg, #1a2d5e, #1e3a8a);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar-heading {
+    padding: 1.25rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.list-group-item {
+    background-color: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.list-group-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    padding-left: 1.75rem;
+}
+
+.list-group-item.active {
+    background-color: var(--secondary-color);
+    color: white;
+    font-weight: 600;
+    border-left: 4px solid #14b8a6;
+}
+
+.list-group-item i {
+    margin-right: 0.75rem;
+    width: 20px;
+    text-align: center;
+}
+
+/* ============================================
+   BOTONES MEJORADOS
+   ============================================ */
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #152e4d, #1e40af);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+}
+
+.btn-secondary {
+    background-color: var(--gray-300);
+    color: var(--dark-color);
+}
+
+.btn-secondary:hover {
+    background-color: #c4d1e8;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--success-color), #22c55e);
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #15803d, #16a34a);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--danger-color), #ef4444);
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #b91c1c, #dc2626);
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+}
+
+/* ============================================
+   FORMULARIOS MEJORADOS
+   ============================================ */
+
+.form-control {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+    outline: none;
+}
+
+.form-control:disabled {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--dark-color);
+    margin-bottom: 0.5rem;
+}
+
+.form-text {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+}
+
+.invalid-feedback {
+    color: var(--danger-color);
+    font-size: 0.85rem;
+    display: block;
+    margin-top: 0.25rem;
+}
+
+select.form-control {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%231e3a8a' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.5rem;
+}
+
+/* ============================================
+   TABLAS MEJORADAS
+   ============================================ */
+
+.table {
+    border-collapse: collapse;
+}
+
+.table thead th {
+    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+    color: white;
+    font-weight: 600;
+    border: none;
+    padding: 1rem;
+}
+
+.table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.table tbody td {
+    padding: 0.75rem 1rem;
+    border-color: #e5e7eb;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(30, 58, 138, 0.02);
+}
+
+/* ============================================
+   ALERTAS MEJORADAS
+   ============================================ */
+
+.alert {
+    border: none;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.alert i {
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+}
+
+.alert-success {
+    background-color: #dcfce7;
+    color: #166534;
+    border-left: 4px solid var(--success-color);
+}
+
+.alert-danger {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid var(--danger-color);
+}
+
+.alert-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+    border-left: 4px solid var(--warning-color);
+}
+
+.alert-info {
+    background-color: #dbeafe;
+    color: #0c4a6e;
+    border-left: 4px solid var(--info-color);
+}
+
+/* ============================================
+   BADGES Y ETIQUETAS
+   ============================================ */
+
+.badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+
+.badge-success {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.badge-danger {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.badge-info {
+    background-color: #dbeafe;
+    color: #0c4a6e;
+}
+
+/* ============================================
+   BREADCRUMB MEJORADO
+   ============================================ */
+
+.breadcrumb {
+    background-color: transparent;
+    padding: 0.75rem 0;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.breadcrumb-item {
+    color: var(--gray-600);
+}
+
+.breadcrumb-item a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.breadcrumb-item a:hover {
+    color: #152e4d;
+    text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+    color: var(--dark-color);
+}
+
+/* ============================================
+   PÁGINAS DE MODALES
+   ============================================ */
+
+.modal-header {
+    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+    color: white;
+    border: none;
+    padding: 1.25rem;
+}
+
+.modal-header .btn-close {
+    filter: brightness(0) invert(1);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    background-color: var(--light-color);
+    border-top: 1px solid #e5e7eb;
+    padding: 1rem;
+}
+
+/* ============================================
+   PÁGINA DE ENCABEZADO
+   ============================================ */
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 2rem;
+}
+
+.page-header h1 {
+    color: var(--primary-color);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.page-header p {
+    color: var(--gray-600);
+    margin: 0;
+}
+
+/* ============================================
+   EFECTO SOMBRA Y PROFUNDIDAD
+   ============================================ */
+
+.shadow-sm {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.shadow-md {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.shadow-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   ANIMACIONES SUTILES
+   ============================================ */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.slide-in-left {
+    animation: slideInLeft 0.3s ease-out;
+}
+
+/* ============================================
+   UTILITARIOS
+   ============================================ */
+
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+.text-secondary {
+    color: var(--secondary-color) !important;
+}
+
+.text-muted {
+    color: var(--gray-600) !important;
+}
+
+.bg-light {
+    background-color: var(--light-color) !important;
+}
+
+.border-top {
+    border-top: 1px solid #e5e7eb !important;
+}
+
+.border-bottom {
+    border-bottom: 1px solid #e5e7eb !important;
+}
+
+.rounded {
+    border-radius: 6px;
+}
+
+.rounded-lg {
+    border-radius: 8px;
+}
+
+/* ============================================
+   RESPONSIVIDAD
+   ============================================ */
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .btn {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .navbar {
+        padding: 0.5rem;
+    }
+    
+    .table {
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
+    
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .btn-group .btn {
+        width: 100%;
+    }
+    
+    .form-control,
+    .btn {
+        font-size: 16px;
+    }
+}
+
+/* ============================================
+   FIN DEL ARCHIVO
+   ============================================ */

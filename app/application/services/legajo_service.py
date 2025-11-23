@@ -8,6 +8,11 @@ from openpyxl.worksheet.datavalidation import DataValidation
 import io
 from flask import current_app
 from datetime import datetime, timedelta
+import secrets
+import string
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # Define el servicio que contiene la lógica de negocio para los legajos.
@@ -76,10 +81,170 @@ class LegajoService:
     # --- MÉTODOS DE OPERACIONES (CUD) ---
 
     def register_new_personal(self, form_data, creating_user_id):
-        """Registra un nuevo empleado y audita la acción."""
-        new_personal_id = self._personal_repo.create(form_data)
-        self._audit_service.log(creating_user_id, 'Personal', 'CREAR', f"Se creó el legajo para el DNI {form_data['dni']}", form_data)
-        return new_personal_id
+        """
+        Registra un nuevo empleado y audita la acción.
+        Genera automáticamente usuario con rol Personal.
+        Username y contraseña son el DNI del empleado.
+        """
+        try:
+            # 1. Crear el personal
+            new_personal_id = self._personal_repo.create(form_data)
+            
+            # 2. Usar DNI como username y contraseña
+            dni = form_data.get('dni', '').strip()
+            if not dni:
+                raise ValueError("El DNI es requerido para crear el usuario")
+            
+            username = dni
+            password = dni
+            email = form_data.get('email', '')
+            
+            # 3. Obtener ID del rol "Personal"
+            id_rol_personal = self._get_personal_role_id()
+            
+            if not id_rol_personal:
+                logger.error("No se encontró ningún rol disponible en la base de datos")
+                raise Exception("Error de configuración: No hay roles disponibles en el sistema")
+            
+            # 4. Crear usuario con los datos generados
+            if self._usuario_service:
+                user_data = {
+                    'username': username,
+                    'email': email,
+                    'password': password,
+                    'id_rol': id_rol_personal,
+                    'id_personal': new_personal_id  # Asociar con el personal creado
+                }
+                # create_user devuelve (mensaje, tipo) -> verificar resultado
+                result = self._usuario_service.create_user(user_data)
+                # Si la función devuelve tupla (mensaje, tipo)
+                if isinstance(result, tuple) and len(result) >= 2:
+                    mensaje, tipo = result[0], result[1]
+                else:
+                    mensaje, tipo = str(result), 'unknown'
+
+                if tipo != 'success':
+                    logger.error(f"Error creando usuario automáticamente: {mensaje}")
+                    # Informar y revertir: lanzar excepción para que el caller lo maneje
+                    raise Exception(f"No se pudo crear el usuario automáticamente: {mensaje}")
+
+                logger.info(f"Usuario '{username}' creado automáticamente para personal ID {new_personal_id} con DNI")
+            else:
+                logger.warning("Usuario service no disponible - no se creó el usuario")
+            
+            # 5. Auditar la acción
+            audit_data = form_data.copy()
+            audit_data['username_generado'] = username
+            audit_data['nota'] = f"Usuario creado automáticamente con DNI {dni} como username y contraseña"
+            self._audit_service.log(
+                creating_user_id, 
+                'Personal', 
+                'CREAR', 
+                f"Se creó el legajo para el DNI {form_data['dni']} con usuario {username}", 
+                audit_data
+            )
+            
+            return new_personal_id
+            
+        except Exception as e:
+            logger.error(f"Error en register_new_personal: {str(e)}")
+            raise
+
+    def _generate_username(self, nombres: str, apellidos: str) -> str:
+        """
+        Genera un username único a partir del nombre y apellido.
+        Formato: primeraletra_apellido (ej: c_hernandez)
+        """
+        try:
+            # Obtener primer nombre y primer apellido, sin espacios
+            primer_nombre = nombres.strip().split()[0].lower() if nombres else "user"
+            primer_apellido = apellidos.strip().split()[0].lower() if apellidos else "personal"
+            
+            base_username = f"{primer_nombre[0]}_{primer_apellido}"
+            username = base_username
+            
+            # Si el username ya existe, agregar números
+            counter = 1
+            while self._usuario_service and self._usuario_service._usuario_repo.find_by_username(username):
+                username = f"{base_username}{counter}"
+                counter += 1
+            
+            return username
+            
+        except Exception as e:
+            logger.error(f"Error generando username: {e}")
+            # Fallback: generar username aleatorio
+            return f"user_{secrets.token_hex(4)}"
+
+    def _generate_password(self, length: int = 12) -> str:
+        """
+        Genera una contraseña segura aleatoria.
+        Incluye mayúsculas, minúsculas, números y símbolos.
+        """
+        uppercase = string.ascii_uppercase
+        lowercase = string.ascii_lowercase
+        digits = string.digits
+        symbols = "!@#$%^&*-_=+"
+        
+        # Asegurar que haya al menos uno de cada tipo
+        password_chars = [
+            secrets.choice(uppercase),
+            secrets.choice(lowercase),
+            secrets.choice(digits),
+            secrets.choice(symbols)
+        ]
+        
+        # Llenar el resto de caracteres aleatoriamente
+        all_chars = uppercase + lowercase + digits + symbols
+        password_chars += [secrets.choice(all_chars) for _ in range(length - 4)]
+        
+        # Mezclar la contraseña
+        random_password = ''.join(secrets.SystemRandom().sample(password_chars, len(password_chars)))
+        
+        return random_password
+
+    def _get_personal_role_id(self) -> int:
+        """
+        Obtiene el ID del rol 'Personal' de la BD.
+        Si no existe, busca un rol alternativo válido.
+        """
+        try:
+            from app.database.connector import get_db_read
+            conn = get_db_read()
+            cursor = conn.cursor()
+            
+            # Primero intentar obtener el rol 'Personal'
+            cursor.execute("SELECT id_rol FROM roles WHERE nombre_rol = 'Personal'")
+            row = cursor.fetchone()
+            
+            if row:
+                logger.info(f"Rol 'Personal' encontrado con ID: {row[0]}")
+                return row[0]
+            
+            # Si no existe, usar el rol alternativo 'RRHH' (válido para empleados)
+            logger.warning("Rol 'Personal' no encontrado en la BD, usando 'RRHH' como alternativa")
+            cursor.execute("SELECT id_rol FROM roles WHERE nombre_rol = 'RRHH'")
+            row = cursor.fetchone()
+            
+            if row:
+                logger.info(f"Usando rol alternativo 'RRHH' con ID: {row[0]}")
+                return row[0]
+            
+            # Si tampoco existe RRHH, obtener cualquier rol disponible
+            logger.warning("Rol 'RRHH' tampoco encontrado, obteniendo primer rol disponible")
+            cursor.execute("SELECT TOP 1 id_rol FROM roles ORDER BY id_rol")
+            row = cursor.fetchone()
+            
+            if row:
+                logger.info(f"Usando primer rol disponible con ID: {row[0]}")
+                return row[0]
+            
+            logger.error("No hay ningún rol disponible en la base de datos")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo ID del rol: {e}")
+            return None
 
     def upload_document_to_personal(self, form_data, file_storage, current_user_id):
         """Gestiona la validación y subida de un nuevo documento."""

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Legajo - DIRESA{% endblock %}
+
+{% block body_content %}
+<div class="container mt-5">
+    <!-- Título centrado -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body text-center py-4">
+            <h1 class="display-6 text-primary fw-semibold mb-2">
+                <i class="bi bi-person-badge me-2"></i>Mi Legajo Personal
+            </h1>
+            <p class="text-muted fs-5 mb-0">
+                Bienvenido, <strong>{{ current_user.nombre_completo or current_user.username }}</strong>
+            </p>
+        </div>
+    </div>
+
+    <!-- Opciones principales -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('personal.ver_datos_personales') }}" class="card text-decoration-none shadow-sm border-0 h-100 hover-lift">
+                <div class="card-body text-center py-4">
+                    <div class="card-icon text-primary mb-3">
+                        <i class="bi bi-eye" style="font-size: 2rem;"></i>
+                    </div>
+                    <h5 class="card-title">Ver mis Datos</h5>
+                    <p class="card-text text-muted small">Consulta tu información personal</p>
+                    <div class="text-primary small">
+                        <span>Ver más</span>
+                        <i class="bi bi-arrow-right ms-1"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('personal.actualizar_datos') }}" class="card text-decoration-none shadow-sm border-0 h-100 hover-lift">
+                <div class="card-body text-center py-4">
+                    <div class="card-icon text-success mb-3">
+                        <i class="bi bi-pencil-square" style="font-size: 2rem;"></i>
+                    </div>
+                    <h5 class="card-title">Actualizar Datos</h5>
+                    <p class="card-text text-muted small">Modifica tu información</p>
+                    <div class="text-success small">
+                        <span>Actualizar</span>
+                        <i class="bi bi-arrow-right ms-1"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <a href="{{ url_for('personal.descargar_datos') }}" class="card text-decoration-none shadow-sm border-0 h-100 hover-lift">
+                <div class="card-body text-center py-4">
+                    <div class="card-icon text-info mb-3">
+                        <i class="bi bi-download" style="font-size: 2rem;"></i>
+                    </div>
+                    <h5 class="card-title">Descargar Datos</h5>
+                    <p class="card-text text-muted small">Exporta tu información</p>
+                    <div class="text-info small">
+                        <span>Descargar</span>
+                        <i class="bi bi-arrow-right ms-1"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Información legal -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light border-0">
+                    <h5 class="card-title mb-0 text-center">
+                        <i class="bi bi-shield-check text-primary me-2"></i>
+                        Tus Derechos - Ley 29733
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        Conforme a la <strong>Ley 29733 de Protección de Datos Personales</strong>, tienes derecho a:
+                    </p>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            <strong>Acceso:</strong> Ver toda tu información personal registrada
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            <strong>Rectificación:</strong> Corregir datos inexactos o incompletos
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            <strong>Cancelación:</strong> Solicitar eliminación de tus datos
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            <strong>Oposición:</strong> Oponerme al procesamiento de mis datos
+                        </li>
+                    </ul>
+                    <p class="text-muted small mt-3 mb-0">
+                        Para más información sobre tus derechos, contacta al departamento de RRHH.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-lift {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .hover-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .card-icon {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+</style>
+{% endblock %}

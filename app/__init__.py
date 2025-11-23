@@ -174,14 +174,16 @@ def create_app():
         from .presentation.routes.legajo_routes import legajo_bp
         from .presentation.routes.sistemas_routes import sistemas_bp
         from .presentation.routes.rrhh_routes import rrhh_bp
-        from .presentation.routes.error_routes import error_bp # <-- Importar el nuevo blueprint
+        from .presentation.routes.error_routes import error_bp
+        from .presentation.routes.personal_routes import personal_bp # <-- Nuevo blueprint para empleados
 
         # Registrar Blueprints
         app.register_blueprint(auth_bp)
         app.register_blueprint(legajo_bp)
         app.register_blueprint(sistemas_bp)
         app.register_blueprint(rrhh_bp)
-        app.register_blueprint(error_bp) # <-- Registrar el blueprint de errores
+        app.register_blueprint(error_bp)
+        app.register_blueprint(personal_bp) # <-- Registrar blueprint de empleados
 
         @app.route('/')
         def index():

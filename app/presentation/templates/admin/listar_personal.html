@@ -1,52 +1,79 @@
 {% extends 'layouts/dashboard.html' %}
 {% from "components/_form_helpers.html" import render_field %}
-{% block title %}Consultar Legajo{% endblock %}
+{% block title %}Gestión de Legajos{% endblock %}
 
 {% block dashboard_content %}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0">Gestión de Legajos del Personal</h1>
-        <div>
-            <a href="{{ url_for('legajo.carga_masiva_personal') }}" class="btn btn-outline-primary me-2">
-                <i class="bi bi-upload me-1"></i> Carga Masiva
-            </a>
-            <a href="{{ url_for('legajo.exportar_lista_general_excel') }}" class="btn btn-outline-success me-2">
-                <i class="bi bi-file-earmark-excel-fill me-1"></i> Exportar Todo
-            </a>
-            <a href="{{ url_for('legajo.crear_personal') }}" class="btn btn-success">
-                <i class="bi bi-plus-circle-fill me-1"></i> Crear Nuevo Legajo
-            </a>
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('legajo.listar_personal') }}">Inicio</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Gestión de Legajos</li>
+        </ol>
+    </nav>
+
+    <!-- Header con Acciones -->
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col">
+                <h1 class="page-title">
+                    <i class="bi bi-briefcase"></i> Gestión de Legajos del Personal
+                </h1>
+                <p class="text-muted">Administre los legajos del personal y acceda a la información completa.</p>
+            </div>
+            <div class="col-auto">
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('legajo.crear_personal') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Crear Nuevo Legajo
+                    </a>
+                    <a href="{{ url_for('legajo.carga_masiva_personal') }}" class="btn btn-info">
+                        <i class="bi bi-upload"></i> Carga Masiva
+                    </a>
+                    <a href="{{ url_for('legajo.exportar_lista_general_excel') }}" class="btn btn-success">
+                        <i class="bi bi-file-earmark-excel-fill"></i> Exportar
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="card shadow-sm mb-4">
+    <!-- Filtros de Búsqueda -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="bi bi-funnel"></i> Filtros de Búsqueda
+        </div>
         <div class="card-body">
-            <h5 class="card-title mb-3">Filtros de Búsqueda</h5>
             <form method="GET" class="row g-3 align-items-end">
-                <div class="col-md-5">
-                    {{ form.dni.label(class="form-label") }}
+                <div class="col-md-4">
+                    <label class="form-label">DNI</label>
                     {{ form.dni(class="form-control") }}
                 </div>
                 <div class="col-md-5">
-                    {{ form.nombres.label(class="form-label") }}
-                    {{ form.nombres(class="form-control", placeholder="Buscar por nombre o apellidos") }}
+                    <label class="form-label">Nombre o Apellidos</label>
+                    {{ form.nombres(class="form-control", placeholder="Buscar...") }}
                 </div>
-                <div class="col-md-2 d-grid">
-                    <button type="submit" class="btn btn-primary">BUSCAR</button>
-                    <!-- Opcional: Botón para limpiar los filtros -->
-                    <a href="{{ url_for('legajo.listar_personal') }}" class="btn btn-secondary mt-2">Limpiar</a>
+                <div class="col-md-3">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-search"></i> Buscar
+                        </button>
+                        <a href="{{ url_for('legajo.listar_personal') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-clockwise"></i> Limpiar
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="card shadow-sm">
+    <!-- Tabla de Resultados -->
+    <div class="card">
         <div class="card-header">
-            Resultados de la Búsqueda
+            <i class="bi bi-table"></i> Resultados de la Búsqueda
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
+                <table class="table table-hover align-middle table-striped">
+                    <thead class="table-header">
                         <tr>
                             <th>DNI</th>
                             <th>Apellidos y Nombres</th>

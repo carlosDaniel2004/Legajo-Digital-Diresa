@@ -57,17 +57,26 @@ def close_db(e=None):
     # Busca y cierra la conexión de lectura si existe.
     db_read = g.pop('db_read', None)
     if db_read is not None:
-        db_read.close()
+        try:
+            db_read.close()
+        except Exception:
+            pass  # Ignorar errores al cerrar
     
     # Busca y cierra la conexión de escritura si existe.
     db_write = g.pop('db_write', None)
     if db_write is not None:
-        db_write.close()
+        try:
+            db_write.close()
+        except Exception:
+            pass  # Ignorar errores al cerrar
     
     # Busca y cierra la conexión de admin si existe.
     db_admin = g.pop('db_admin', None)
     if db_admin is not None:
-        db_admin.close()
+        try:
+            db_admin.close()
+        except Exception:
+            pass  # Ignorar errores al cerrar
 
 # Define una función para inicializar el manejo de la base de datos en la aplicación Flask.
 def init_app_db(app):

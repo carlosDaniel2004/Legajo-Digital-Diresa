@@ -1,5 +1,9 @@
 {% extends 'layouts/base.html' %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mejoras_diseño.css') }}">
+{% endblock %}
+
 {% block body_content %}
 <div class="d-flex" id="wrapper">
     <div class="prototipo-sidebar d-flex flex-column">

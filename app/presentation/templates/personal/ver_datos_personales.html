@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Ver Mis Datos Personales - DIRESA{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-1">
+                <i class="bi bi-eye"></i> Mis Datos Personales
+            </h1>
+            <p class="text-muted">Art. 8 de Ley 29733 - Derecho de Acceso</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('personal.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+            <a href="{{ url_for('personal.descargar_datos') }}" class="btn btn-success btn-sm">
+                <i class="bi bi-download"></i> Descargar
+            </a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Datos Personales -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h6 class="mb-0">
+                <i class="bi bi-person"></i> Datos Personales
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Nombres</strong></label>
+                    <p class="form-control-plaintext">{{ persona.nombres if hasattr(persona, 'nombres') else 'N/A' }}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Apellidos</strong></label>
+                    <p class="form-control-plaintext">{{ persona.apellidos if hasattr(persona, 'apellidos') else 'N/A' }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>DNI</strong></label>
+                    <p class="form-control-plaintext">{{ persona.dni }}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Sexo</strong></label>
+                    <p class="form-control-plaintext">
+                        {% if hasattr(persona, 'sexo') and persona.sexo %}
+                            {{ 'Masculino' if persona.sexo == 'M' else 'Femenino' }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Fecha de Nacimiento</strong></label>
+                    <p class="form-control-plaintext">{{ persona.fecha_nacimiento if hasattr(persona, 'fecha_nacimiento') else 'N/A' }}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Estado Civil</strong></label>
+                    <p class="form-control-plaintext">{{ persona.estado_civil if hasattr(persona, 'estado_civil') else 'No especificado' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Datos de Contacto -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h6 class="mb-0">
+                <i class="bi bi-telephone"></i> Datos de Contacto
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Email Corporativo</strong></label>
+                    <p class="form-control-plaintext">{{ persona.email if hasattr(persona, 'email') else 'N/A' }}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Email Personal</strong></label>
+                    <p class="form-control-plaintext">{{ persona.email_personal if hasattr(persona, 'email_personal') else 'No especificado' }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Teléfono</strong></label>
+                    <p class="form-control-plaintext">{{ persona.telefono if hasattr(persona, 'telefono') else 'No especificado' }}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Dirección</strong></label>
+                    <p class="form-control-plaintext">{{ persona.direccion if hasattr(persona, 'direccion') else 'No especificada' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información Laboral -->
+    {% if legajo %}
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h6 class="mb-0">
+                <i class="bi bi-briefcase"></i> Información Laboral
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Cargo</strong></label>
+                    <p class="form-control-plaintext">{{ legajo.get('cargo', 'N/A') if legajo is iterable and legajo is not string else 'N/A' }}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Unidad Administrativa</strong></label>
+                    <p class="form-control-plaintext">{{ legajo.get('unidad', 'N/A') if legajo is iterable and legajo is not string else 'N/A' }}</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Fecha de Ingreso</strong></label>
+                    <p class="form-control-plaintext">{{ legajo.get('fecha_ingreso', 'N/A') if legajo is iterable and legajo is not string else 'N/A' }}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><strong>Tipo de Contrato</strong></label>
+                    <p class="form-control-plaintext">{{ legajo.get('tipo_contrato', 'N/A') if legajo is iterable and legajo is not string else 'N/A' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Acciones -->
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="card-title">¿Datos Incorrectos?</h6>
+                    <p class="card-text small">Actualiza tus datos personales.</p>
+                    <a href="{{ url_for('personal.actualizar_datos') }}" class="btn btn-warning btn-sm">
+                        <i class="bi bi-pencil"></i> Rectificar
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="card-title">¿Deseas Cancelar Datos?</h6>
+                    <p class="card-text small">Solicita la cancelación de datos personales.</p>
+                    <a href="{{ url_for('personal.solicitar_cancelacion') }}" class="btn btn-danger btn-sm">
+                        <i class="bi bi-trash"></i> Solicitar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información Legal -->
+    <div class="alert alert-info mt-4 small">
+        <strong>Derecho de Acceso (Art. 8 Ley 29733):</strong>
+        <p class="mb-0">
+            Tienes derecho a acceder a tus datos personales de forma gratuita, en un formato comprensible 
+            y completo, pudiendo obtener una copia de los mismos.
+        </p>
+    </div>
+</div>
+{% endblock %}

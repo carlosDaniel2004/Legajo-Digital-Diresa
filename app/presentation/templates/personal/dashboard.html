@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Legajo Personal - DIRESA{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-1">
+                <i class="bi bi-person-badge"></i> Mi Legajo Personal
+            </h1>
+            <p class="text-muted">Ley 29733 - Protección de Datos Personales</p>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-circle"></i> {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Tarjeta de Bienvenida -->
+    <div class="card mb-4 border-start border-primary border-5">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="card-title">Bienvenido {{ current_user.username }}</h5>
+                    <p class="card-text">
+                        Aquí puedes acceder a tu información personal y ejercer tus derechos conforme a la 
+                        <strong>Ley 29733 de Protección de Datos Personales</strong>.
+                    </p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <i class="bi bi-shield-check" style="font-size: 3rem; color: #0d6efd;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Derechos ARCO -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-eye text-info"></i> Acceso (Art. 8)
+                    </h6>
+                    <p class="card-text small">Ver todos tus datos personales almacenados en el sistema.</p>
+                    <a href="{{ url_for('personal.ver_datos_personales') }}" class="btn btn-sm btn-info">
+                        Ver mis datos
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-pencil text-warning"></i> Rectificación (Art. 9)
+                    </h6>
+                    <p class="card-text small">Corregir datos personales inexactos o incompletos.</p>
+                    <a href="{{ url_for('personal.actualizar_datos') }}" class="btn btn-sm btn-warning">
+                        Actualizar datos
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-trash text-danger"></i> Cancelación (Art. 10)
+                    </h6>
+                    <p class="card-text small">Solicitar la cancelación de datos personales no necesarios.</p>
+                    <a href="{{ url_for('personal.solicitar_cancelacion') }}" class="btn btn-sm btn-danger">
+                        Solicitar cancelación
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-hand-thumbs-up text-success"></i> Oposición (Art. 11)
+                    </h6>
+                    <p class="card-text small">Oponerme al tratamiento de mis datos personales.</p>
+                    <a href="{{ url_for('personal.derecho_oposicion') }}" class="btn btn-sm btn-success">
+                        Ejercer oposición
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información de Usuario -->
+    {% if usuario %}
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h6 class="mb-0">
+                <i class="bi bi-person-circle"></i> Información de Cuenta
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Usuario:</strong> {{ usuario.username }}</p>
+                    <p><strong>Correo:</strong> {{ usuario.email }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Rol:</strong> <span class="badge bg-primary">{{ usuario.rol }}</span></p>
+                    <p><strong>Estado:</strong> 
+                        <span class="badge bg-{{ 'success' if usuario.activo else 'danger' }}">
+                            {{ 'Activo' if usuario.activo else 'Inactivo' }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Información de Personal -->
+    {% if persona %}
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h6 class="mb-0">
+                <i class="bi bi-briefcase"></i> Información Personal
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Nombres:</strong> {{ persona.nombres if hasattr(persona, 'nombres') else 'N/A' }}</p>
+                    <p><strong>Apellidos:</strong> {{ persona.apellidos if hasattr(persona, 'apellidos') else 'N/A' }}</p>
+                    <p><strong>DNI:</strong> {{ persona.dni }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Fecha de Nacimiento:</strong> {{ persona.fecha_nacimiento if hasattr(persona, 'fecha_nacimiento') else 'N/A' }}</p>
+                    <p><strong>Estado Civil:</strong> {{ persona.estado_civil if hasattr(persona, 'estado_civil') else 'No especificado' }}</p>
+                    <p><strong>Teléfono:</strong> {{ persona.telefono if hasattr(persona, 'telefono') else 'No especificado' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Descarga de Datos -->
+    <div class="card border-start border-success border-5">
+        <div class="card-body">
+            <h6 class="card-title">
+                <i class="bi bi-download"></i> Descargar Mis Datos
+            </h6>
+            <p class="card-text small">Descarga una copia de todos tus datos personales en formato JSON.</p>
+            <a href="{{ url_for('personal.descargar_datos') }}" class="btn btn-success btn-sm" target="_blank">
+                <i class="bi bi-cloud-download"></i> Descargar JSON
+            </a>
+        </div>
+    </div>
+
+    <!-- Información Legal -->
+    <div class="alert alert-info mt-4 small">
+        <strong>Información importante:</strong>
+        <ul class="mb-0 mt-2">
+            <li>Tus datos están protegidos conforme a la <strong>Ley 29733</strong>.</li>
+            <li>Las solicitudes de cancelación serán procesadas en un plazo máximo de 5 días hábiles.</li>
+            <li>Puedes ejercer tus derechos ARCO de forma gratuita.</li>
+            <li>Para más información, contacta con el Área de RRHH.</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 8px;
+    }
+    .card-header {
+        border-bottom: 2px solid #e9ecef;
+    }
+    .border-start {
+        border-left-width: 4px !important;
+    }
+</style>
+{% endblock %}

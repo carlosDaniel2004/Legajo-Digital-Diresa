@@ -206,6 +206,9 @@ class UsuarioService:
             # Generar hash de la contraseña
             password_hash = generate_password_hash(password)
             
+            # Obtener id_personal si está disponible
+            id_personal = user_data.get('id_personal')
+            
             # Crear el usuario en la base de datos
             new_user = self._usuario_repo.create_user(
                 username=username,
@@ -213,6 +216,7 @@ class UsuarioService:
                 password_hash=password_hash,
                 id_rol=id_rol,
                 activo=True,
+                id_personal=id_personal,
                 fecha_creacion=datetime.utcnow()
             )
             

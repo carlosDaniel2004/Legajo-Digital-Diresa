@@ -1,5 +1,6 @@
 # RUTA: app/infrastructure/persistence/sqlserver_repository.py
 
+import logging
 from app.database.connector import get_db_read, get_db_write
 from app.domain.models.usuario import Usuario
 from app.domain.models.personal import Personal
@@ -7,6 +8,8 @@ from app.domain.repositories.i_usuario_repository import IUsuarioRepository
 from app.domain.repositories.i_personal_repository import IPersonalRepository
 from app.domain.repositories.i_auditoria_repository import IAuditoriaRepository
 from app.utils.pagination import SimplePagination
+
+logger = logging.getLogger(__name__)
 
 def _row_to_dict(cursor, row):
     # Función de utilidad para convertir una fila del cursor a un diccionario
@@ -57,33 +60,62 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
         """
         Obtiene la lista completa de usuarios con sus roles y estados para 
         la tabla de Gestión de Usuarios.
+        Usa query directa en lugar de SP para evitar problemas de permisos.
         """
         conn = get_db_read()
         cursor = conn.cursor()
         
-        query = "{CALL sp_listar_todos_los_usuarios}" 
-        cursor.execute(query)
-        
-        results = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
-        
-        # --- CORRECCIÓN: Construcción manual y segura de objetos ---
-        # Esto previene errores si el SP no devuelve todas las columnas esperadas.
-        usuarios = []
-        for data in results:
-            if data:
-                usuario = Usuario(
-                    id_usuario=data.get('id_usuario'),
-                    username=data.get('username'),
-                    id_rol=data.get('id_rol'),  # Si 'id_rol' no existe, pasará None
-                    password_hash=data.get('password_hash'),
-                    activo=data.get('activo'),
-                    email=data.get('email'),
-                    nombre_rol=data.get('nombre_rol'),
-                    nombre_completo=data.get('nombre_completo'),
-                    ultimo_login=data.get('ultimo_login')
-                )
-                usuarios.append(usuario)
-        return usuarios
+        try:
+            # Query directa en lugar de SP
+            query = """
+            SELECT 
+                u.id_usuario, 
+                u.username, 
+                u.email,
+                r.nombre_rol, 
+                u.activo, 
+                u.ultimo_login,
+                COALESCE(p.nombres + ' ' + p.apellidos, 'N/A') AS nombre_completo
+            FROM 
+                usuarios u
+            JOIN 
+                roles r ON u.id_rol = r.id_rol
+            LEFT JOIN 
+                personal p ON u.id_personal = p.id_personal
+            ORDER BY 
+                u.username
+            """
+            cursor.execute(query)
+            results = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+            
+            # --- CORRECCIÓN: Construcción manual y segura de objetos ---
+            # Esto previene errores si el SP no devuelve todas las columnas esperadas.
+            usuarios = []
+            for data in results:
+                if data:
+                    usuario = Usuario(
+                        id_usuario=data.get('id_usuario'),
+                        username=data.get('username'),
+                        id_rol=data.get('id_rol'),  # Si 'id_rol' no existe, pasará None
+                        password_hash=data.get('password_hash'),
+                        activo=data.get('activo'),
+                        email=data.get('email'),
+                        nombre_rol=data.get('nombre_rol'),
+                        nombre_completo=data.get('nombre_completo'),
+                        ultimo_login=data.get('ultimo_login')
+                    )
+                    # Asignar alias para compatibilidad con la vista
+                    usuario.rol_nombre = usuario.nombre_rol
+                    usuario.last_login = usuario.fecha_ultimo_login
+                    # Nota: is_active es una propiedad de Flask-Login, no se puede asignar
+                    usuarios.append(usuario)
+            return usuarios
+        except Exception as e:
+            logger.error(f"Error al obtener usuarios: {e}")
+            return []
+        finally:
+            cursor.close()
+            conn.close()
 
     def find_by_id(self, user_id):
         """Busca un usuario por su ID con todos los campos incluyendo email y rol."""
@@ -419,7 +451,7 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
         cursor.execute("UPDATE usuarios SET email = ? WHERE id_usuario = ?", new_email, user_id)
         conn.commit()
 
-    def create_user(self, username, email, password_hash, id_rol, activo=True, fecha_creacion=None):
+    def create_user(self, username, email, password_hash, id_rol, activo=True, fecha_creacion=None, id_personal=None):
         """
         Crea un nuevo usuario en la base de datos.
         Utiliza la conexión de administrador debido a permisos de INSERT.
@@ -431,6 +463,7 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
             id_rol: ID del rol a asignar
             activo: Estado del usuario (default: True)
             fecha_creacion: Fecha de creación (si no se proporciona, usa NOW())
+            id_personal: ID del personal asociado (opcional)
         
         Returns:
             Usuario creado con su ID asignado
@@ -444,10 +477,10 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
         try:
             # Insertar el nuevo usuario
             query = """
-            INSERT INTO usuarios (username, email, password_hash, id_rol, activo, fecha_creacion)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO usuarios (username, email, password_hash, id_rol, activo, fecha_creacion, id_personal)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """
-            cursor.execute(query, username, email, password_hash, id_rol, activo, fecha_creacion or datetime.utcnow())
+            cursor.execute(query, username, email, password_hash, id_rol, activo, fecha_creacion or datetime.utcnow(), id_personal)
             conn.commit()
             
             # Obtener el ID del usuario creado
@@ -1093,3 +1126,62 @@ class SqlServerSolicitudRepository:
         # El SP debe actualizar el campo de Legajo si es aprobación.
         # Asumimos que el SP maneja la lógica de actualización/rechazo.
         return True
+
+    def update_personal_by_employee(self, persona):
+        """
+        Actualiza datos personales no críticos que el empleado puede cambiar.
+        Cumple con Ley 29733 - Art. 9 (Derecho de Rectificación).
+        
+        Solo permite cambiar: teléfono, estado civil, email personal, dirección.
+        """
+        conn = get_db_write()
+        cursor = conn.cursor()
+        try:
+            query = """
+            UPDATE personal
+            SET 
+                telefono = ?,
+                estado_civil = ?,
+                email_personal = ?,
+                direccion = ?
+            WHERE id_personal = ?
+            """
+            cursor.execute(query, 
+                persona.telefono if hasattr(persona, 'telefono') else None,
+                persona.estado_civil if hasattr(persona, 'estado_civil') else None,
+                persona.email_personal if hasattr(persona, 'email_personal') else None,
+                persona.direccion if hasattr(persona, 'direccion') else None,
+                persona.id
+            )
+            conn.commit()
+            return True
+        except Exception as e:
+            self.logger.error(f"Error actualizando datos del empleado: {str(e)}")
+            return False
+        finally:
+            cursor.close()
+            conn.close()
+    
+    def find_by_email(self, email):
+        """Busca personal por email."""
+        conn = get_db_read()
+        cursor = conn.cursor()
+        try:
+            query = """
+            SELECT TOP 1 * FROM personal
+            WHERE email_personal = ? OR email = ?
+            ORDER BY id_personal DESC
+            """
+            cursor.execute(query, email, email)
+            row = cursor.fetchone()
+            
+            if row:
+                from app.domain.models.personal import Personal
+                return Personal(*row)
+            return None
+        except Exception as e:
+            self.logger.error(f"Error buscando personal por email: {str(e)}")
+            return None
+        finally:
+            cursor.close()
+            conn.close()

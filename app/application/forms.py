@@ -232,6 +232,38 @@ class UserManagementForm(FlaskForm):
     
     submit = SubmitField('Guardar Cambios')
 
+class ActualizarPersonalForm(FlaskForm):
+    """
+    Formulario para que los empleados actualicen sus propios datos personales.
+    Cumple con Ley 29733 - Art. 9 (Derecho de Rectificación).
+    
+    Solo permite modificar datos no críticos que el empleado puede cambiar.
+    """
+    telefono = StringField('Teléfono de Contacto', validators=[
+        Optional(),
+        Length(min=7, max=15, message="El teléfono debe tener entre 7 y 15 caracteres.")
+    ])
+    
+    estado_civil = SelectField('Estado Civil', choices=[
+        ('', '-- Selecciona un estado civil --'),
+        ('Soltero', 'Soltero'),
+        ('Casado', 'Casado'),
+        ('Divorciado', 'Divorciado'),
+        ('Viudo', 'Viudo')
+    ], validators=[Optional()])
+    
+    email_personal = StringField('Email Personal', validators=[
+        Optional(),
+        Email(message="Por favor, introduce un email válido.")
+    ])
+    
+    direccion = StringField('Dirección', validators=[
+        Optional(),
+        Length(max=200, message="La dirección no puede superar 200 caracteres.")
+    ])
+    
+    submit = SubmitField('Guardar Cambios')
+
 class BulkUploadForm(FlaskForm):
     """Formulario para la subida masiva de personal desde un archivo Excel."""
     excel_file = FileField('Archivo Excel (.xlsx)', validators=[

@@ -8,7 +8,9 @@ from flask import Blueprint, jsonify, render_template, redirect, send_file, url_
 from flask_login import login_required, current_user
 from app.decorators import role_required
 from app.application.forms import PersonalForm, DocumentoForm, FiltroPersonalForm, BulkUploadForm
+from app.application.services.file_validation_service import FileValidationService
 from app.domain.models.personal import Personal
+from app.core.security import IDORProtection
 from datetime import datetime
 legajo_bp = Blueprint('legajo', __name__, url_prefix='/legajo')
 
@@ -91,6 +93,12 @@ def dashboard():
 @role_required('AdministradorLegajos', 'RRHH', 'Sistemas')
 def ver_legajo(personal_id):
     try:
+        # ✅ SEGURIDAD: Verificar permisos IDOR
+        if not IDORProtection.can_access_personal(current_user.id, personal_id, current_user.rol):
+            current_app.logger.warning(f"SEGURIDAD: Intento IDOR detectado - Usuario {current_user.username} intentó acceder a personal_id {personal_id}")
+            flash('No tienes permiso para acceder a este legajo.', 'danger')
+            return redirect(url_for('legajo.listar_personal'))
+        
         legajo_service = current_app.config['LEGAJO_SERVICE']
         # Seguridad: Pasar el usuario actual al servicio para la validación de permisos (IDOR).
         legajo_completo = legajo_service.get_personal_details(personal_id, current_user)
@@ -154,9 +162,34 @@ def crear_personal():
     
     if form.validate_on_submit():
         try:
-            legajo_service.register_new_personal(form.data, current_user.id)
-            flash('Legajo creado exitosamente.', 'success')
-            return redirect(url_for('legajo.listar_personal'))
+            # Registrar el personal (esto ahora crea usuario automáticamente)
+            new_personal_id = legajo_service.register_new_personal(form.data, current_user.id)
+            
+            # Obtener datos del usuario creado de la BD
+            from app.database.connector import get_db_read
+            conn = get_db_read()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT u.username, u.email 
+                FROM usuarios u 
+                JOIN personal p ON u.id_personal = p.id_personal
+                WHERE p.id_personal = ?
+            """, new_personal_id)
+            
+            usuario_data = cursor.fetchone()
+            
+            if usuario_data:
+                # Guardar en sesión para mostrar en confirmación
+                from flask import session
+                session['nuevo_usuario'] = {
+                    'username': usuario_data[0],
+                    'email': usuario_data[1],
+                    'personal_id': new_personal_id
+                }
+            
+            flash('Legajo y usuario creado exitosamente.', 'success')
+            return redirect(url_for('legajo.confirmacion_personal_creado', personal_id=new_personal_id))
         except pyodbc.Error as db_err:
             err_msg = str(db_err)
             current_app.logger.error(f"Error de base de datos al crear legajo: {err_msg}")
@@ -173,6 +206,38 @@ def crear_personal():
     return render_template('admin/crear_personal.html', form=form, titulo="Crear Nuevo Legajo")
 
 
+@legajo_bp.route('/personal/confirmacion/<int:personal_id>')
+@login_required
+@role_required('AdministradorLegajos')
+def confirmacion_personal_creado(personal_id):
+    """Muestra los datos del usuario creado automáticamente."""
+    from flask import session
+    
+    # Obtener datos de la sesión
+    nuevo_usuario = session.pop('nuevo_usuario', None)
+    
+    if not nuevo_usuario:
+        flash('No hay datos de usuario para mostrar.', 'warning')
+        return redirect(url_for('legajo.listar_personal'))
+    
+    legajo_service = current_app.config['LEGAJO_SERVICE']
+    try:
+        persona = legajo_service._personal_repo.find_by_id(personal_id)
+        if not persona:
+            flash('Personal no encontrado.', 'danger')
+            return redirect(url_for('legajo.listar_personal'))
+    except Exception as e:
+        current_app.logger.error(f"Error al obtener datos del personal: {e}")
+        flash('Error al cargar los datos del personal.', 'danger')
+        return redirect(url_for('legajo.listar_personal'))
+    
+    return render_template(
+        'admin/confirmacion_usuario_creado.html',
+        persona=persona,
+        usuario_info=nuevo_usuario
+    )
+
+
 @legajo_bp.route('/personal/<int:personal_id>/documento/subir', methods=['POST'])
 @login_required
 @role_required('AdministradorLegajos')
@@ -184,9 +249,17 @@ def subir_documento(personal_id):
     
     if form.validate_on_submit():
         try:
+            # ✅ SEGURIDAD: Validar archivo antes de procesarlo
+            archivo = form.archivo.data
+            is_valid, error_message = FileValidationService.validate_file(archivo)
+            if not is_valid:
+                current_app.logger.warning(f"SEGURIDAD: Intento de subir archivo inválido - {archivo.filename} - Error: {error_message} - Usuario: {current_user.username}")
+                flash(error_message or 'El archivo no es válido o contiene código malicioso.', 'danger')
+                return redirect(url_for('legajo.ver_legajo', personal_id=personal_id))
+            
             form_data = form.data
             form_data['id_personal'] = personal_id
-            legajo_service.upload_document_to_personal(form_data, form.archivo.data, current_user.id)
+            legajo_service.upload_document_to_personal(form_data, archivo, current_user.id)
             flash('Documento subido correctamente.', 'success')
         except ValueError as ve:
             # Captura errores de validación específicos del servicio (ej. tamaño de archivo)

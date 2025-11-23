@@ -5,6 +5,9 @@ from flask_login import login_user, logout_user, current_user, login_required
 from app.application.forms import LoginForm, TwoFactorForm
 from app import limiter
 from app.application.services.usuario_service import UsuarioService
+from app.core.security import AccountLockoutManager
+from app.application.services.file_validation_service import FileValidationService
+import os
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -18,8 +21,18 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         try:
+            username = form.username.data
+            
+            # ✅ SEGURIDAD: Verificar si cuenta está bloqueada
+            is_locked, minutos_restantes = AccountLockoutManager.is_account_locked(username)
+            if is_locked:
+                mensaje = f"Cuenta bloqueada temporalmente por múltiples intentos fallidos. Intenta en {minutos_restantes} minutos."
+                flash(mensaje, 'warning')
+                current_app.logger.warning(f"SEGURIDAD: Intento de login en cuenta bloqueada: {username}")
+                return redirect(url_for('auth.login'))
+            
             usuario_service = current_app.config['USUARIO_SERVICE']
-            result = usuario_service.attempt_login(form.username.data, form.password.data)
+            result = usuario_service.attempt_login(username, form.password.data)
 
             # Verificar si result es una tupla (error de email)
             if isinstance(result, tuple) and result[0] == 'email_error':
@@ -28,13 +41,22 @@ def login():
             
             # Si result es un ID de usuario, proceder con 2FA
             if result:
+                # ✅ SEGURIDAD: Reiniciar contador en login exitoso
+                AccountLockoutManager.reset_failed_attempts(username)
+                
                 session['2fa_user_id'] = result
                 session['2fa_username'] = form.username.data
                 # Guardar el estado de "Recordarme" en la sesión
                 session['2fa_remember_me'] = form.remember_me.data
                 return redirect(url_for('auth.verify_2fa'))
             else:
-                flash('Usuario o contraseña incorrectos.', 'danger')
+                # ✅ SEGURIDAD: Incrementar intentos fallidos e informar bloqueo
+                fue_bloqueado = AccountLockoutManager.increment_failed_attempts(username)
+                if fue_bloqueado:
+                    flash('Cuenta bloqueada tras múltiples intentos fallidos.', 'danger')
+                else:
+                    flash('Usuario o contraseña incorrectos.', 'danger')
+                current_app.logger.warning(f"SEGURIDAD: Intento fallido de login: {username}")
                 return redirect(url_for('auth.login'))
         except Exception as e:
             current_app.logger.error(f"Error inesperado en login: {e}")
@@ -79,6 +101,8 @@ def verify_2fa():
                 return redirect(url_for('rrhh.inicio_rrhh')) 
             elif user.rol == 'AdministradorLegajos':
                 return redirect(url_for('legajo.dashboard'))
+            elif user.rol == 'Personal':
+                return redirect(url_for('personal.inicio_personal'))
             else:
                 # Redirige a una página de índice general si el rol no coincide
                 return redirect(url_for('index'))
@@ -164,41 +188,84 @@ def perfil():
         current_app.logger.warning(f"No se pudo obtener datos personales: {str(e)}")
     
     if request.method == 'POST':
+        # Verificar si es carga de foto de carnet
+        if 'foto_carnet' in request.files:
+            archivo = request.files['foto_carnet']
+            
+            if archivo and archivo.filename != '':
+                # Validar archivo usando FileValidationService
+                is_valid, error_message = FileValidationService.validate_file(
+                    archivo, 
+                    allowed_types=['jpg', 'jpeg', 'png', 'pdf']
+                )
+                
+                if not is_valid:
+                    logger.warning(f"SEGURIDAD: Intento de subir foto de carnet inválida - {current_user.username}")
+                    flash(error_message or 'Tipo de archivo no permitido', 'danger')
+                    return redirect(url_for('auth.perfil'))
+                
+                try:
+                    # Crear directorio de carnet si no existe
+                    carnet_dir = os.path.join(
+                        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                        'presentation',
+                        'static',
+                        'uploads',
+                        'carnets'
+                    )
+                    os.makedirs(carnet_dir, exist_ok=True)
+                    
+                    # Guardar archivo con nombre seguro
+                    import time
+                    ext = archivo.filename.rsplit('.', 1)[1].lower()
+                    filename = f"carnet_{current_user.id}_{int(time.time())}.{ext}"
+                    filepath = os.path.join(carnet_dir, filename)
+                    
+                    archivo.save(filepath)
+                    
+                    # Registrar en bitácora
+                    logger.info(f"AUDITORÍA: Usuario {current_user.username} subió foto de carnet")
+                    
+                    flash('¡Foto de carnet actualizada correctamente!', 'success')
+                except Exception as e:
+                    logger.error(f"Error al guardar foto de carnet: {str(e)}")
+                    flash('Ocurrió un error al guardar la foto de carnet.', 'danger')
+                
+                return redirect(url_for('auth.perfil'))
+        
+        # Manejo de cambio de contraseña (existente)
         password_actual = request.form.get('password_actual')
         password_nueva = request.form.get('password_nueva')
         password_confirmacion = request.form.get('password_confirmacion')
 
         # Validaciones básicas
-        if not password_actual or not password_nueva or not password_confirmacion:
-            flash('Todos los campos son obligatorios.', 'warning')
-            return redirect(url_for('auth.perfil'))
+        if password_actual and password_nueva and password_confirmacion:
+            if password_nueva != password_confirmacion:
+                flash('Las nuevas contraseñas no coinciden.', 'danger')
+                return redirect(url_for('auth.perfil'))
+            
+            if len(password_nueva) < 8:
+                flash('La contraseña debe tener al menos 8 caracteres.', 'danger')
+                return redirect(url_for('auth.perfil'))
 
-        if password_nueva != password_confirmacion:
-            flash('Las nuevas contraseñas no coinciden.', 'danger')
-            return redirect(url_for('auth.perfil'))
-        
-        if len(password_nueva) < 8:
-            flash('La contraseña debe tener al menos 8 caracteres.', 'danger')
-            return redirect(url_for('auth.perfil'))
+            # Verificar contraseña actual
+            if not current_user.check_password(password_actual):
+                flash('La contraseña actual es incorrecta.', 'danger')
+                return redirect(url_for('auth.perfil'))
 
-        # Verificar contraseña actual
-        if not current_user.check_password(password_actual):
-            flash('La contraseña actual es incorrecta.', 'danger')
-            return redirect(url_for('auth.perfil'))
+            try:
+                # Actualizar contraseña usando el servicio
+                if usuario_service:
+                    usuario_service.update_password(current_user.id, password_nueva) 
+                else:
+                    from werkzeug.security import generate_password_hash
+                    current_user.password_hash = generate_password_hash(password_nueva)
+                    from app import db
+                    db.session.commit()
 
-        try:
-            # Actualizar contraseña usando el servicio
-            if usuario_service:
-                usuario_service.update_password(current_user.id, password_nueva) 
-            else:
-                from werkzeug.security import generate_password_hash
-                current_user.password_hash = generate_password_hash(password_nueva)
-                from app import db
-                db.session.commit()
-
-            flash('¡Contraseña actualizada correctamente!', 'success')
-        except Exception as e:
-            current_app.logger.error(f"Error al cambiar password: {str(e)}")
-            flash('Ocurrió un error al actualizar la contraseña.', 'danger')
+                flash('¡Contraseña actualizada correctamente!', 'success')
+            except Exception as e:
+                current_app.logger.error(f"Error al cambiar password: {str(e)}")
+                flash('Ocurrió un error al actualizar la contraseña.', 'danger')
 
     return render_template('auth/perfil.html', user=current_user, user_data=user_data)
