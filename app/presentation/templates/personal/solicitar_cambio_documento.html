@@ -1,0 +1,74 @@
+{% extends "layouts/dashboard.html" %}
+
+{% block title %}Solicitar Cambio de Documento{% endblock %}
+
+{% block dashboard_content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h3 mb-0 text-gray-800">Solicitar Cambio de Documento</h1>
+            <p class="text-muted">Solicita reemplazar un documento existente por una versión actualizada o corregida.</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('personal.ver_mi_legajo') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Volver al Legajo
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Detalles del Documento a Reemplazar</h6>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <strong>Documento Actual:</strong> {{ documento.nombre_archivo }} <br>
+                <strong>Tipo:</strong> {{ documento.nombre_tipo }} <br>
+                <strong>Subido el:</strong> {{ documento.fecha_subida }}
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="mb-4">
+                    <label for="archivo_nuevo" class="form-label font-weight-bold">Seleccionar Nuevo Documento</label>
+                    <input type="file" class="form-control" id="archivo_nuevo" name="archivo_nuevo" required>
+                    <div class="invalid-feedback">Por favor selecciona el nuevo archivo.</div>
+                    <small class="text-muted">Formatos permitidos: PDF, JPG, PNG. Máx 5MB.</small>
+                </div>
+
+                <div class="mb-4">
+                    <label for="motivo" class="form-label font-weight-bold">Motivo del Cambio</label>
+                    <textarea class="form-control" id="motivo" name="motivo" rows="3" required placeholder="Ej: El documento actual está borroso o desactualizado..."></textarea>
+                    <div class="invalid-feedback">Por favor ingresa un motivo.</div>
+                </div>
+
+                <hr>
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{{ url_for('personal.ver_mi_legajo') }}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-exchange-alt"></i> Enviar Solicitud de Cambio
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Validación simple de Bootstrap
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+</script>
+{% endblock %}
