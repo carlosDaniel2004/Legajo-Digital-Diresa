@@ -495,3 +495,84 @@ def exportar_lista_general_excel():
         current_app.logger.error(f"Error al exportar el reporte general a Excel: {e}")
         flash('Ocurrió un error al generar el reporte de Excel.', 'danger')
         return redirect(url_for('legajo.listar_personal'))
+    
+# ... imports existentes (asegúrate de tener 'os' y 'send_file') ...
+import os 
+
+# --- RUTAS DE GESTIÓN DE SOLICITUDES (AdministradorLegajos) ---
+
+@legajo_bp.route('/solicitudes/documentos', methods=['GET'])
+@login_required
+@role_required('AdministradorLegajos')
+def gestionar_solicitudes():
+    """Bandeja de entrada de solicitudes para el Administrador de Legajos."""
+    try:
+        solicitud_service = current_app.config.get('SOLICITUDES_SERVICE')
+        solicitudes = solicitud_service.get_all_pending()
+        # Renderiza la plantilla ubicada en la carpeta 'admin'
+        return render_template('admin/gestion_solicitudes.html', solicitudes=solicitudes)
+    except Exception as e:
+        current_app.logger.error(f"Error listando solicitudes: {e}")
+        flash('Error al cargar las solicitudes pendientes.', 'danger')
+        return redirect(url_for('legajo.dashboard'))
+
+@legajo_bp.route('/solicitudes/procesar/<int:solicitud_id>/<accion>', methods=['POST'])
+@login_required
+@role_required('AdministradorLegajos')
+def procesar_solicitud(solicitud_id, accion):
+    """
+    Procesa la aprobación o rechazo de una solicitud.
+    Accion: 'aprobar' | 'rechazar'
+    """
+    try:
+        solicitud_service = current_app.config.get('SOLICITUDES_SERVICE')
+        audit_service = current_app.config['AUDIT_SERVICE']
+
+        if accion not in ['aprobar', 'rechazar']:
+            flash('Acción no válida.', 'warning')
+            return redirect(url_for('legajo.gestionar_solicitudes'))
+
+        resultado = solicitud_service.process_request(solicitud_id, accion)
+
+        if resultado:
+            msg = 'Documento actualizado correctamente.' if accion == 'aprobar' else 'Solicitud rechazada.'
+            flash(msg, 'success')
+            
+            audit_service.log(
+                current_user.id, 
+                'AdminLegajos', 
+                f'{accion.upper()}_SOLICITUD_CAMBIO', 
+                f"Procesó solicitud ID {solicitud_id}"
+            )
+        else:
+            flash('No se pudo completar la operación en la base de datos.', 'danger')
+
+        return redirect(url_for('legajo.gestionar_solicitudes'))
+
+    except Exception as e:
+        current_app.logger.error(f"Error procesando solicitud {solicitud_id}: {e}")
+        flash('Ocurrió un error interno.', 'danger')
+        return redirect(url_for('legajo.gestionar_solicitudes'))
+
+@legajo_bp.route('/solicitudes/ver-nuevo/<int:solicitud_id>', methods=['GET'])
+@login_required
+@role_required('AdministradorLegajos')
+def ver_archivo_propuesto(solicitud_id):
+    """Permite visualizar el archivo temporal subido por el empleado."""
+    try:
+        solicitud_service = current_app.config.get('SOLICITUDES_SERVICE')
+        # Usamos el método del repositorio directamente o a través del servicio si lo expusiste
+        solicitud = solicitud_service.solicitud_repo.get_by_id(solicitud_id)
+        
+        if not solicitud or not solicitud.get('ruta_nuevo_archivo'):
+            flash('El archivo temporal no se encuentra.', 'warning')
+            return redirect(url_for('legajo.gestionar_solicitudes'))
+            
+        # Construye la ruta absoluta al archivo temporal
+        # Nota: 'ruta_nuevo_archivo' ya viene como 'uploads/temp_requests/archivo.pdf'
+        ruta_abs = os.path.join(current_app.root_path, 'presentation/static', solicitud['ruta_nuevo_archivo'])
+        
+        return send_file(ruta_abs, as_attachment=False)
+    except Exception as e:
+        current_app.logger.error(f"Error visualizando archivo propuesto: {e}")
+        return "Error al visualizar archivo", 404

@@ -1,0 +1,85 @@
+{% extends 'layouts/dashboard.html' %}
+
+{% block title %}Gestión de Solicitudes - Admin Legajos{% endblock %}
+
+{% block dashboard_content %}
+<div class="container-fluid mt-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Solicitudes de Cambios en Documentos</h1>
+    </div>
+
+    {% include 'components/_alerts.html' %}
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 bg-primary text-white">
+            <h6 class="m-0 fw-bold"><i class="bi bi-inbox-fill me-2"></i>Pendientes de Revisión</h6>
+        </div>
+        <div class="card-body">
+            {% if solicitudes %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Solicitante</th>
+                            <th>Documento Original</th>
+                            <th>Motivo del Cambio</th>
+                            <th>Revisión</th>
+                            <th class="text-center">Decisión</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sol in solicitudes %}
+                        <tr>
+                            <td>{{ sol.fecha_solicitud }}</td>
+                            <td>
+                                <div class="fw-bold">{{ sol.nombres }} {{ sol.apellidos }}</div>
+                                <small class="text-muted">Usuario: {{ sol.username }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ sol.nombre_doc_original }}</span>
+                            </td>
+                            <td>
+                                <span class="d-inline-block text-truncate" style="max-width: 250px;" title="{{ sol.motivo }}">
+                                    {{ sol.motivo }}
+                                </span>
+                            </td>
+                            <td>
+                                {# Enlace actualizado a legajo.ver_archivo_propuesto #}
+                                <a href="{{ url_for('legajo.ver_archivo_propuesto', solicitud_id=sol.id_solicitud) }}" target="_blank" class="btn btn-sm btn-info text-white">
+                                    <i class="bi bi-file-earmark-arrow-up"></i> Ver Nuevo
+                                </a>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    {# Formularios actualizados a legajo.procesar_solicitud #}
+                                    <form action="{{ url_for('legajo.procesar_solicitud', solicitud_id=sol.id_solicitud, accion='aprobar') }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-success btn-sm me-1" onclick="return confirm('¿Está seguro de APROBAR este cambio? El documento anterior será reemplazado permanentemente.');" title="Aprobar Cambio">
+                                            <i class="bi bi-check-lg"></i>
+                                        </button>
+                                    </form>
+                                    
+                                    <form action="{{ url_for('legajo.procesar_solicitud', solicitud_id=sol.id_solicitud, accion='rechazar') }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Rechazar esta solicitud?');" title="Rechazar Cambio">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-check-circle display-4"></i>
+                <p class="mt-3 lead">No hay solicitudes pendientes por el momento.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

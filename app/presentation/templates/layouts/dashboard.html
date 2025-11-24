@@ -57,6 +57,9 @@
             <a href="{{ url_for('legajo.listar_personal') }}" class="list-group-item {% if request.endpoint in ['legajo.listar_personal', 'legajo.ver_legajo'] %}active{% endif %}">
                 <i class="bi bi-search"></i>Consultar Legajo
             </a>
+            <a href="{{ url_for('legajo.gestionar_solicitudes') }}" class="list-group-item {% if 'solicitudes' in request.endpoint %}active{% endif %}">
+                <i class="bi bi-inbox-fill"></i> Gestionar Solicitudes
+            </a>
             {% endif %}
 
             {# --- Opciones para RRHH --- #}

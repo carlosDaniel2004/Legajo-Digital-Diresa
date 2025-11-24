@@ -304,43 +304,73 @@ def ver_datos_personales():
 def solicitar_cambio_documento():
     """
     Formulario para solicitar la modificación o reemplazo de un documento existente.
+    Guarda el archivo temporalmente y crea un registro en la BD.
     """
-    audit_service = current_app.config['AUDIT_SERVICE']
-    legajo_service = current_app.config['LEGAJO_SERVICE']
-    
-    # 1. Obtener ID del documento (de la URL si es GET, o del formulario si es POST)
-    documento_id = request.args.get('documento_id') or request.form.get('documento_id')
-    
-    # Validación básica
-    if not documento_id:
-        flash('Error: No se especificó el documento a modificar.', 'warning')
-        return redirect(url_for('personal.ver_mi_legajo'))
+    try:
+        # Servicios necesarios
+        audit_service = current_app.config['AUDIT_SERVICE']
+        legajo_service = current_app.config['LEGAJO_SERVICE']
+        solicitud_service = current_app.config.get('SOLICITUDES_SERVICE') # Asegúrate de tener este servicio registrado
 
-    # 2. Obtener los detalles del documento de la BD
-    documento = legajo_service.get_document_by_id(documento_id)
-    
-    if not documento:
-        flash('Error: El documento solicitado no existe o no tiene permisos.', 'danger')
-        return redirect(url_for('personal.ver_mi_legajo'))
+        # 1. Obtener ID del documento
+        documento_id = request.args.get('documento_id') or request.form.get('documento_id')
+        
+        if not documento_id:
+            flash('Error: No se especificó el documento a modificar.', 'warning')
+            return redirect(url_for('personal.ver_mi_legajo'))
 
-    if request.method == 'POST':
-        try:
-            razon = request.form.get('razon', '')
-            archivo_nuevo = request.files.get('archivo_nuevo') # Si vas a procesar el archivo aquí
-            
-            # Aquí iría la lógica real para crear la solicitud...
-            # solicitud_service.crear_solicitud(...)
+        # 2. Obtener datos del documento para la vista
+        # Nota: Se asume que get_document_by_id devuelve un objeto o diccionario con 'nombre_archivo'
+        documento = legajo_service.get_document_by_id(documento_id)
+        
+        if not documento:
+            flash('Error: El documento solicitado no existe o no tiene permisos.', 'danger')
+            return redirect(url_for('personal.ver_mi_legajo'))
 
-            audit_service.log(
-                current_user.id, 'Personal', 'SOLICITUD_CAMBIO_DOC', 
-                f"Solicitó cambio para documento ID: {documento_id}. Motivo: {razon}"
-            )
-            flash('Solicitud de cambio de documento registrada. Será revisada por RRHH.', 'success')
-            return redirect(url_for('personal.inicio'))
-            
-        except Exception as e:
-            logger.error(f"Error solicitud cambio documento: {e}", exc_info=True)
-            flash('Error al procesar la solicitud.', 'danger')
+        if request.method == 'POST':
+            razon = request.form.get('razon', '').strip()
+            archivo_nuevo = request.files.get('archivo_nuevo')
 
-    # 3. Pasar la variable 'documento' a la plantilla
-    return render_template('personal/solicitar_cambio_documento.html', documento=documento)    
+            # Validaciones
+            if not razon:
+                flash('Debe especificar un motivo para el cambio.', 'warning')
+            elif not archivo_nuevo or archivo_nuevo.filename == '':
+                flash('Debe adjuntar el nuevo documento.', 'warning')
+            else:
+                try:
+                    # Lógica de Negocio: Guardar archivo físico y registrar en BD
+                    # Se usa 'valor_anterior' para el motivo y 'valor_nuevo' para la ruta del archivo
+                    # según la estructura de tu SP sp_solicitar_modificacion_personal
+                    
+                    if solicitud_service:
+                        solicitud_service.registrar_solicitud_documento(
+                            id_usuario=current_user.id,
+                            id_personal=getattr(current_user, 'id_personal', None), # Asumiendo relación usuario-personal
+                            id_documento=documento_id,
+                            motivo=razon,
+                            archivo=archivo_nuevo
+                        )
+
+                        audit_service.log(
+                            current_user.id, 'Personal', 'SOLICITUD_CAMBIO_DOC', 
+                            f"Solicitó cambio para documento ID: {documento_id}. Motivo: {razon}"
+                        )
+                        flash('Solicitud enviada correctamente. RRHH revisará el cambio.', 'success')
+                        return redirect(url_for('personal.ver_mi_legajo'))
+                    else:
+                        current_app.logger.error("Servicio de solicitudes no configurado")
+                        flash('Error interno: Servicio no disponible.', 'danger')
+
+                except ValueError as ve:
+                    flash(str(ve), 'warning')
+                except Exception as e:
+                    current_app.logger.error(f"Error solicitud cambio documento: {e}", exc_info=True)
+                    flash('Ocurrió un error al procesar su solicitud.', 'danger')
+
+        # 3. Renderizar vista
+        return render_template('personal/solicitar_cambio_documento.html', documento=documento)
+
+    except Exception as e:
+        current_app.logger.error(f"Error crítico en ruta solicitar cambio: {e}")
+        flash('Error inesperado en el sistema.', 'danger')
+        return redirect(url_for('personal.inicio'))
