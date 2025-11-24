@@ -8,6 +8,7 @@ from flask_login import login_required, current_user
 from app.application.forms import ActualizarPersonalForm
 from app.application.services.file_validation_service import FileValidationService # Importación clave
 import logging
+from datetime import datetime
 
 # Definición del Blueprint
 personal_bp = Blueprint('personal', __name__, url_prefix='/personal')
@@ -95,7 +96,7 @@ def inicio():
 @personal_bp.route('/mi-legajo', methods=['GET'])
 @login_required
 def ver_mi_legajo():
-    """Vista completa del legajo (Solo Lectura)."""
+    """Vista completa del legajo con diseño integrado (Estilo RRHH)."""
     try:
         id_personal = getattr(current_user, 'id_personal', None)
         if not id_personal:
@@ -103,9 +104,19 @@ def ver_mi_legajo():
             return redirect(url_for('personal.inicio'))
 
         legajo_service = current_app.config['LEGAJO_SERVICE']
+        
+        # 1. Obtener legajo completo
         legajo_completo = legajo_service._personal_repo.get_full_legajo_by_id(id_personal)
         
-        return render_template('personal/ver_legajo_propio.html', legajo=legajo_completo)
+        # 2. Obtener lista de secciones para el acordeón (igual que en RRHH)
+        secciones = legajo_service.get_secciones_for_select()
+        
+        # 3. Pasar 'today' para calcular vencimientos en la vista
+        return render_template('personal/ver_legajo_propio.html', 
+                               legajo=legajo_completo,
+                               secciones=secciones,
+                               today=datetime.now().date())
+                               
     except Exception as e:
         logger.error(f"Error al cargar mi legajo: {e}")
         flash('Error al cargar el legajo.', 'danger')

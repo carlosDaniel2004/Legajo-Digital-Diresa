@@ -1,26 +1,51 @@
-# RUTA: app/application/services/solicitud_service.py
+import os
+from werkzeug.utils import secure_filename
+from flask import current_app
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SolicitudService:
-    """
-    Servicio de aplicación para gestionar las solicitudes de modificación.
-    Se conecta al repositorio de solicitudes.
-    """
     def __init__(self, solicitud_repository):
-        # El repositorio ya se crea y se pasa desde app/__init__.py
         self.solicitud_repo = solicitud_repository
 
     def get_all_pending(self):
-        """Obtiene todas las solicitudes que están en estado pendiente."""
-        # Se asume que el repositorio devuelve una lista de diccionarios o modelos.
-        # Aquí es donde el servicio llamaría a solicitud_repo.get_pending_requests()
-        # Si no hay implementación, devuelve una lista vacía para evitar errores.
-        try:
-            return self.solicitud_repo.get_pending_requests()
-        except Exception:
-            # En un entorno real, manejaríamos el logging. Aquí devolvemos vacío para no romper la app.
-            return []
+        return self.solicitud_repo.get_pending_requests()
 
     def process_request(self, request_id, action):
-        """Procesa la aprobación o rechazo de una solicitud."""
-        # Llama a la lógica de persistencia.
         return self.solicitud_repo.process_request(request_id, action)
+
+    def registrar_solicitud_cambio(self, id_usuario, id_documento, motivo, archivo):
+        """
+        Guarda el archivo en una carpeta temporal y registra la solicitud en BD.
+        """
+        try:
+            # 1. Validar y Guardar archivo físico
+            if not archivo:
+                raise ValueError("El archivo es requerido")
+
+            filename = secure_filename(archivo.filename)
+            # Definir ruta de carga (asegúrate de que esta carpeta exista o créala)
+            upload_folder = os.path.join(current_app.root_path, 'presentation/static/uploads/temp_requests')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            ruta_guardado = os.path.join(upload_folder, filename)
+            archivo.save(ruta_guardado)
+            
+            # Ruta relativa para guardar en BD
+            ruta_relativa = f"uploads/temp_requests/{filename}"
+
+            # 2. Llamar al repositorio para insertar en BD
+            data = {
+                'id_usuario_solicitante': id_usuario,
+                'id_documento_original': id_documento,
+                'motivo': motivo,
+                'ruta_nuevo_archivo': ruta_relativa,
+                'tipo_solicitud': 'CAMBIO_DOCUMENTO'
+            }
+            
+            return self.solicitud_repo.crear_solicitud(data)
+
+        except Exception as e:
+            logger.error(f"Error en servicio registrar_solicitud_cambio: {e}")
+            raise
