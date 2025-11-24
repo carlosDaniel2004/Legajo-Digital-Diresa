@@ -1,171 +1,29 @@
 {% extends 'layouts/dashboard.html' %}
 
+{# 
+   CORRECCIÓN DE LÓGICA FRONTEND:
+   Eliminamos la redefinición de 'block body_content'. 
+   Ahora heredamos la estructura (sidebar + header) definida en 'layouts/dashboard.html'.
+   Esto asegura que las nuevas opciones del menú aparezcan automáticamente.
+#}
+
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/mejoras_diseño.css') }}">
+    {# Mantenemos los estilos específicos y cargamos los del padre #}
+    {{ super() }}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mejoras_diseño.css') }}">
 {% endblock %}
 
-{% block body_content %}
-<div class="d-flex" id="wrapper">
-    <div class="prototipo-sidebar d-flex flex-column">
-        <div class="sidebar-user-info">
-            <h5 class="user-name">{{ current_user.nombre_completo or current_user.username }}</h5>
-            {% if current_user.fecha_ultimo_login %}
-            <div class="last-login">
-                Última sesión: {{ current_user.fecha_ultimo_login | localtime }}
-            </div>
-            {% endif %}
-            <div class="profile-circle">
-                <i class="bi bi-person-fill"></i>
-            </div>
-        </div>
+{% block dashboard_content %}
+    {# 
+       PUENTE DE BLOQUES:
+       'layouts/dashboard.html' espera un bloque llamado 'dashboard_content'.
+       Las vistas hijas de personal (como inicio_personal.html) usan 'block content'.
+       Aquí conectamos ambos para que el contenido se renderice en el lugar correcto.
+    #}
+    {% block content %}{% endblock %}
+{% endblock %}
 
-        <div class="sidebar-menu list-group list-group-flush flex-grow-1">
-            <div class="menu-heading">Opciones</div>
-
-            {# 🔑 LÓGICA DE URL DINÁMICA #}
-            {% set HOME_URL = url_for('index') %}
-            {% set active_test = 'index' %}
-
-            {% if current_user.rol == 'Sistemas' %}
-                {% set HOME_URL = url_for('sistemas.dashboard') %}
-                {% set active_test = 'sistemas.dashboard' %}
-            {% elif current_user.rol == 'RRHH' %}
-                {% set HOME_URL = url_for('rrhh.inicio_rrhh') %}
-                {% set active_test = 'rrhh.inicio_rrhh' %}
-            {% elif current_user.rol == 'AdministradorLegajos' %}
-                {% set HOME_URL = url_for('legajo.dashboard') %}
-                {% set active_test = 'legajo.dashboard' %}
-            {% elif current_user.rol == 'Personal' or current_user.rol == 'Empleado' %}
-                 {# Caso para el empleado normal #}
-                {% set HOME_URL = url_for('personal.inicio') %}
-                {% set active_test = 'personal.inicio' %}
-            {% endif %}
-
-            {# 1. ENLACE DE INICIO #}
-            <a href="{{ HOME_URL }}" class="list-group-item 
-                {% if request.endpoint == active_test or request.endpoint == 'main_dashboard' %}active{% endif %}">
-                <i class="bi bi-house-door-fill"></i>Inicio
-            </a>
-            
-            {# 2. OPCIONES ESPECÍFICAS DE CADA ROL #}
-
-            {# --- Opciones para Legajos --- #}
-            {% if current_user.rol == 'AdministradorLegajos' %}
-            <a href="{{ url_for('legajo.crear_personal') }}" class="list-group-item {% if request.endpoint == 'legajo.crear_personal' %}active{% endif %}">
-                <i class="bi bi-folder-plus"></i>Nuevo Legajo
-            </a>
-            <a href="{{ url_for('legajo.listar_personal') }}" class="list-group-item {% if request.endpoint in ['legajo.listar_personal', 'legajo.ver_legajo'] %}active{% endif %}">
-                <i class="bi bi-search"></i>Consultar Legajo
-            </a>
-            {% endif %}
-
-            {# --- Opciones para RRHH --- #}
-            {% if current_user.rol == 'RRHH' %}
-            <a href="{{ url_for('rrhh.listar_personal') }}" class="list-group-item {% if request.endpoint in ['rrhh.listar_personal', 'rrhh.ver_legajo'] %}active{% endif %}">
-                <i class="bi bi-search"></i>Consultar Legajos
-            </a>
-            <a href="{{ url_for('rrhh.panel_rrhh') }}" class="list-group-item {% if request.endpoint == 'rrhh.panel_rrhh' %}active{% endif %}">
-                <i class="bi bi-graph-up"></i>Estadísticas
-            </a>
-            <a href="{{ url_for('rrhh.exportar_empleados_excel') }}" class="list-group-item {% if request.endpoint == 'rrhh.exportar_empleados_excel' %}active{% endif %}">
-                <i class="bi bi-file-earmark-excel"></i>Exportar a Excel
-            </a>
-            {% endif %}
-
-            {# --- Opciones para Sistemas --- #}
-            {% if current_user.rol == 'Sistemas' %}
-            <a href="{{ url_for('sistemas.auditoria') }}" class="list-group-item {% if request.endpoint == 'sistemas.auditoria' %}active{% endif %}">
-                <i class="bi bi-journal-check"></i>Auditoría
-            </a>
-            <a href="{{ url_for('sistemas.gestionar_usuarios') }}" class="list-group-item 
-                {% if request.endpoint == 'sistemas.gestionar_usuarios' %}active{% endif %}">
-                <i class="bi bi-person-gear"></i>Gestión de Usuarios
-            </a>
-            <a href="{{ url_for('sistemas.estado_servidor') }}" class="list-group-item 
-                {% if request.endpoint == 'sistemas.estado_servidor' %}active{% endif %}">
-                <i class="bi bi-cpu"></i>Monitoreo de Rendimiento
-            </a>
-            <a href="{{ url_for('sistemas.gestion_backups') }}" class="list-group-item 
-                {% if 'backups' in request.endpoint %}active{% endif %}">
-                <i class="bi bi-cloud-upload"></i>Backups
-            </a>
-            <a href="{{ url_for('sistemas.errores') }}" class="list-group-item 
-                {% if request.endpoint == 'sistemas.errores' %}active{% endif %}">
-                <i class="bi bi-bug"></i>Registro de Errores
-            </a>
-            <a href="{{ url_for('sistemas.documentos_eliminados') }}" class="list-group-item 
-                {% if request.endpoint == 'sistemas.documentos_eliminados' %}active{% endif %}">
-                <i class="bi bi-trash-fill"></i>Documentos Eliminados
-            </a>
-            {% endif %}
-
-        </div>
-        
-        <div class="list-group list-group-flush mt-auto">
-            <a href="{{ url_for('auth.logout') }}" class="list-group-item"><i class="bi bi-box-arrow-left"></i>Cerrar Sesión</a>
-        </div>
-    </div>
-    <div id="page-content-wrapper" class="prototipo-main-content">
-        <header class="prototipo-header mb-4">
-            <button class="btn btn-primary" id="sidebarToggle">
-                <i class="bi bi-list"></i>
-            </button>
-            <div class="header-center-logos">
-                <div class="diresa-brand-header">
-                    <img src="{{ url_for('static', filename='img/diresa_logo.png') }}" alt="DIRESA Pasco Logo">
-                </div>
-                <div class="minsa-brand-header">
-                    <img src="{{ url_for('static', filename='img/logo_ministerio_salud.png') }}" alt="Ministerio de Salud Logo">
-                </div>
-            </div>
-
-            <div class="header-right-icons">
-                <div class="user-dropdown dropdown">
-                    <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle user-icon-header"></i>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end text-small shadow" aria-labelledby="dropdownUser">
-                        <li><a class="dropdown-item" href="{{ url_for('auth.perfil') }}">Mi Perfil</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Cerrar Sesión</a></li>
-                    </ul>
-                </div>
-            </div>
-        </header>
-
-        <div class="container-fluid px-4">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'danger' else 'warning' if category == 'warning' else 'info' if category == 'info' else 'success' }} alert-dismissible fade show" role="alert">
-                        <i class="bi bi-{% if category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% elif category == 'info' %}info-circle{% else %}check-circle{% endif %}"></i>
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        </div>
-
-        <main>
-            {# --- AQUÍ ESTÁ LA CLAVE PARA QUE SE VEA EL CONTENIDO --- #}
-            {% block content %}{% endblock %}
-        </main>
-    </div>
-</div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', event => {
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', event => {
-                event.preventDefault();
-                document.getElementById('wrapper').classList.toggle('toggled');
-            });
-        }
-    });
-</script>
-
-{% block scripts %}{% endblock %}
-
+{% block scripts %}
+    {{ super() }}
+    {# Aquí puedes agregar scripts específicos para todo el módulo de personal si fuera necesario #}
 {% endblock %}

@@ -2,7 +2,8 @@
 
 {% block title %}Solicitar Cancelación - DIRESA{% endblock %}
 
-{% block body_content %}
+{# CORRECCIÓN: Usar 'content' #}
+{% block content %}
 <div class="container-fluid mt-4">
     <div class="row mb-4">
         <div class="col-md-8">
@@ -12,7 +13,6 @@
             <p class="text-muted">Art. 10 de Ley 29733 - Derecho de Cancelación</p>
         </div>
         <div class="col-md-4 text-end">
-            {# CORRECCIÓN 1: El botón 'Volver' debe ir al dashboard principal (personal.inicio) #}
             <a href="{{ url_for('personal.inicio') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left"></i> Volver al Inicio
             </a>
@@ -96,7 +96,6 @@
                             <button type="submit" class="btn btn-danger">
                                 <i class="bi bi-send"></i> Enviar Solicitud
                             </button>
-                            {# CORRECCIÓN 2: El botón 'Cancelar' debe usar el endpoint 'personal.inicio' #}
                             <a href="{{ url_for('personal.inicio') }}" class="btn btn-outline-secondary">
                                 Cancelar
                             </a>
@@ -153,7 +152,6 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Validar que al menos un checkbox esté seleccionado
         const form = document.querySelector('form');
         form.addEventListener('submit', function(e) {
             const checkboxes = document.querySelectorAll('input[name="datos_cancelar"]:checked');

@@ -1,11 +1,11 @@
-{% extends "layouts/dashboard.html" %}
+{% extends "personal/dashboard.html" %}
 
 {% block title %}Mi Legajo Digital{% endblock %}
 
-{% block dashboard_content %}
+{# CORRECCIÓN: Herencia correcta para mantener sidebar activo #}
+{% block content %}
 <div class="container-fluid">
 
-    <!-- Encabezado -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Mi Legajo Digital</h1>
         <a href="{{ url_for('personal.inicio') }}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
@@ -13,7 +13,6 @@
         </a>
     </div>
 
-    <!-- Mensajes -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -25,7 +24,6 @@
         {% endif %}
     {% endwith %}
 
-    <!-- Ficha Resumen -->
     <div class="card shadow mb-4">
         <div class="card-header py-3 border-bottom-primary">
             <h6 class="m-0 font-weight-bold text-primary">Ficha de Datos Personales</h6>
@@ -60,7 +58,6 @@
         </div>
     </div>
 
-    <!-- Pestañas -->
     <div class="card shadow mb-4">
         <div class="card-header p-0">
             <ul class="nav nav-tabs" id="legajoTab" role="tablist" style="background-color: #f8f9fc;">
@@ -76,7 +73,6 @@
         <div class="card-body">
             <div class="tab-content" id="legajoTabContent">
                 
-                <!-- DOCUMENTOS -->
                 <div class="tab-pane fade show active" id="documentos" role="tabpanel">
                     {% if legajo.documentos %}
                     <div class="table-responsive">
@@ -99,15 +95,12 @@
                                     <td>{{ doc.fecha_subida }}</td>
                                     <td class="text-center">
                                         <div class="btn-group" role="group">
-                                            <!-- Ver -->
                                             <a href="{{ url_for('legajo.ver_documento', documento_id=doc.id_documento) }}" target="_blank" class="btn btn-info btn-sm" title="Ver">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <!-- Descargar -->
                                             <a href="{{ url_for('legajo.ver_documento', documento_id=doc.id_documento) }}?download=1" class="btn btn-success btn-sm" title="Descargar">
                                                 <i class="fas fa-download"></i>
                                             </a>
-                                            <!-- Solicitar Cambio (NUEVO) -->
                                             <a href="{{ url_for('personal.solicitar_cambio_documento', documento_id=doc.id_documento) }}" class="btn btn-warning btn-sm text-white" title="Solicitar Cambio / Corrección">
                                                 <i class="fas fa-sync-alt"></i>
                                             </a>
@@ -123,7 +116,6 @@
                     {% endif %}
                 </div>
 
-                <!-- CONTRATOS -->
                 <div class="tab-pane fade" id="contratos" role="tabpanel">
                     {% if legajo.contratos %}
                     <table class="table table-bordered">
@@ -137,7 +129,6 @@
                     {% else %}<p class="text-center text-muted p-3">Sin registros.</p>{% endif %}
                 </div>
 
-                <!-- ESTUDIOS -->
                 <div class="tab-pane fade" id="estudios" role="tabpanel">
                      {% if legajo.estudios %}
                     <table class="table table-bordered">
@@ -151,7 +142,6 @@
                     {% else %}<p class="text-center text-muted p-3">Sin registros.</p>{% endif %}
                 </div>
 
-                <!-- CAPACITACIONES -->
                 <div class="tab-pane fade" id="capacitaciones" role="tabpanel">
                      {% if legajo.capacitaciones %}
                     <table class="table table-bordered">
@@ -165,7 +155,6 @@
                     {% else %}<p class="text-center text-muted p-3">Sin registros.</p>{% endif %}
                 </div>
 
-                <!-- HISTORIAL -->
                 <div class="tab-pane fade" id="historial" role="tabpanel">
                      {% if legajo.historial %}
                     <table class="table table-bordered">
@@ -179,7 +168,6 @@
                     {% else %}<p class="text-center text-muted p-3">Sin registros.</p>{% endif %}
                 </div>
 
-                <!-- LICENCIAS -->
                 <div class="tab-pane fade" id="licencias" role="tabpanel">
                      {% if legajo.licencias %}
                     <table class="table table-bordered">

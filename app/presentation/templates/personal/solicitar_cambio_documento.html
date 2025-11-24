@@ -2,7 +2,7 @@
 
 {% block title %}Solicitar Cambio de Documento{% endblock %}
 
-{% block dashboard_content %}
+{% block content %}
 <div class="container-fluid mt-4">
     <div class="row mb-4">
         <div class="col-md-8">
@@ -24,17 +24,19 @@
                 </div>
                 <div class="card-body">
                     
-                    <!-- Información del Documento Actual -->
                     <div class="alert alert-warning border-left-warning" role="alert">
                         <h5 class="alert-heading"><i class="fas fa-file-alt"></i> Documento a Reemplazar</h5>
                         <hr>
-                        <p class="mb-1"><strong>Nombre:</strong> {{ documento.filename or documento.nombre_archivo }}</p>
+                        {# Se usa getattr o acceso seguro por si el objeto viene como tupla o diccionario #}
+                        <p class="mb-1"><strong>Nombre:</strong> {{ documento.nombre_archivo }}</p>
                         <p class="mb-0"><strong>Nota:</strong> El documento actual seguirá visible hasta que RRHH apruebe este cambio.</p>
                     </div>
 
-                    <!-- Formulario -->
                     <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        {# --- CORRECCIÓN: Campo oculto para mantener el ID del documento en el POST --- #}
+                        <input type="hidden" name="documento_id" value="{{ documento.id_documento }}">
 
                         <div class="mb-4">
                             <label for="archivo_nuevo" class="form-label font-weight-bold">1. Seleccionar Nuevo Archivo</label>

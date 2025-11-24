@@ -251,38 +251,6 @@ def descargar_datos():
         logger.error(f"Error descarga: {e}")
         return jsonify({'error': 'Error interno'}), 500
 
-@personal_bp.route('/solicitar-cambio-documento', methods=['GET', 'POST'])
-@login_required
-def solicitar_cambio_documento():
-    """
-    Formulario para solicitar la modificación o reemplazo de un documento existente.
-    """
-    audit_service = current_app.config['AUDIT_SERVICE']
-    
-    if request.method == 'POST':
-        try:
-            # Aquí la lógica obtiene el documento_id del formulario POST, no de la URL
-            documento_id = request.form.get('documento_id')
-            razon = request.form.get('razon', '')
-            
-            # Aquí iría la lógica para registrar la solicitud en la tabla de Solicitudes/Workflow
-            # solicitud_service.crear_solicitud(...)
-
-            audit_service.log(
-                current_user.id, 'Personal', 'SOLICITUD_CAMBIO_DOC', 
-                f"Solicitó cambio para documento ID: {documento_id}. Motivo: {razon}"
-            )
-            flash('Solicitud de cambio de documento registrada. Será revisada por RRHH.', 'success')
-            return redirect(url_for('personal.inicio'))
-            
-        except Exception as e:
-            logger.error(f"Error solicitud cambio documento: {e}", exc_info=True)
-            flash('Error al procesar la solicitud.', 'danger')
-
-    print("Cambio de documento")            
-    return render_template('personal/solicitar_cambio_documento.html')    
-# app/presentation/routes/personal_routes.py - Agregar esta nueva ruta
-# ...
 
 @personal_bp.route('/mis-datos', methods=['GET'])
 @login_required
@@ -319,3 +287,49 @@ def ver_datos_personales():
         logger.error(f"FATAL: Error al cargar mis datos personales: {e}", exc_info=True)
         flash('Ocurrió un error al cargar su información detallada.', 'danger')
         return redirect(url_for('personal.inicio'))
+    
+@personal_bp.route('/solicitar-cambio-documento', methods=['GET', 'POST'])
+@login_required
+def solicitar_cambio_documento():
+    """
+    Formulario para solicitar la modificación o reemplazo de un documento existente.
+    """
+    audit_service = current_app.config['AUDIT_SERVICE']
+    legajo_service = current_app.config['LEGAJO_SERVICE']
+    
+    # 1. Obtener ID del documento (de la URL si es GET, o del formulario si es POST)
+    documento_id = request.args.get('documento_id') or request.form.get('documento_id')
+    
+    # Validación básica
+    if not documento_id:
+        flash('Error: No se especificó el documento a modificar.', 'warning')
+        return redirect(url_for('personal.ver_mi_legajo'))
+
+    # 2. Obtener los detalles del documento de la BD
+    documento = legajo_service.get_document_by_id(documento_id)
+    
+    if not documento:
+        flash('Error: El documento solicitado no existe o no tiene permisos.', 'danger')
+        return redirect(url_for('personal.ver_mi_legajo'))
+
+    if request.method == 'POST':
+        try:
+            razon = request.form.get('razon', '')
+            archivo_nuevo = request.files.get('archivo_nuevo') # Si vas a procesar el archivo aquí
+            
+            # Aquí iría la lógica real para crear la solicitud...
+            # solicitud_service.crear_solicitud(...)
+
+            audit_service.log(
+                current_user.id, 'Personal', 'SOLICITUD_CAMBIO_DOC', 
+                f"Solicitó cambio para documento ID: {documento_id}. Motivo: {razon}"
+            )
+            flash('Solicitud de cambio de documento registrada. Será revisada por RRHH.', 'success')
+            return redirect(url_for('personal.inicio'))
+            
+        except Exception as e:
+            logger.error(f"Error solicitud cambio documento: {e}", exc_info=True)
+            flash('Error al procesar la solicitud.', 'danger')
+
+    # 3. Pasar la variable 'documento' a la plantilla
+    return render_template('personal/solicitar_cambio_documento.html', documento=documento)    

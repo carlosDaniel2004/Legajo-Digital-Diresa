@@ -2,7 +2,8 @@
 
 {% block title %}Ver Mis Datos Personales - DIRESA{% endblock %}
 
-{% block body_content %}
+{# CORRECCIÓN: Cambiamos 'body_content' por 'content' para respetar la barra lateral #}
+{% block content %}
 <div class="container-fluid mt-4">
     <div class="row mb-4">
         <div class="col-md-8">
@@ -12,7 +13,6 @@
             <p class="text-muted">Art. 8 de Ley 29733 - Derecho de Acceso</p>
         </div>
         <div class="col-md-4 text-end">
-            {# CORRECCIÓN: El endpoint es 'personal.inicio', no 'personal.dashboard' #}
             <a href="{{ url_for('personal.inicio') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left"></i> Volver
             </a>
@@ -43,12 +43,10 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label"><strong>Nombres</strong></label>
-                    {# CORRECCIÓN JINJA2: Usar 'or' en lugar de hasattr #}
                     <p class="form-control-plaintext">{{ persona.nombres or 'N/A' }}</p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label"><strong>Apellidos</strong></label>
-                    {# CORRECCIÓN JINJA2: Usar 'or' en lugar de hasattr #}
                     <p class="form-control-plaintext">{{ persona.apellidos or 'N/A' }}</p>
                 </div>
             </div>
@@ -60,7 +58,6 @@
                 <div class="col-md-6 mb-3">
                     <label class="form-label"><strong>Sexo</strong></label>
                     <p class="form-control-plaintext">
-                        {# CORRECCIÓN JINJA2: Usar chequeo simple de existencia #}
                         {% if persona.sexo %}
                             {{ 'Masculino' if persona.sexo == 'M' else 'Femenino' }}
                         {% else %}
@@ -72,12 +69,10 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label"><strong>Fecha de Nacimiento</strong></label>
-                    {# CORRECCIÓN JINJA2: Usar 'or' en lugar de hasattr #}
                     <p class="form-control-plaintext">{{ persona.fecha_nacimiento or 'N/A' }}</p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label"><strong>Estado Civil</strong></label>
-                    {# CORRECCIÓN JINJA2: Usar 'or' en lugar de hasattr #}
                     <p class="form-control-plaintext">{{ persona.estado_civil or 'No especificado' }}</p>
                 </div>
             </div>
@@ -94,24 +89,20 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label"><strong>Email Corporativo</strong></label>
-                    {# CORRECCIÓN JINJA2: Usar 'or' en lugar de hasattr #}
                     <p class="form-control-plaintext">{{ persona.email or 'N/A' }}</p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label"><strong>Email Personal</strong></label>
-                    {# CORRECCIÓN JINJA2: Usar 'or' en lugar de hasattr #}
                     <p class="form-control-plaintext">{{ persona.email_personal or 'No especificado' }}</p>
                 </div>
             </div>
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label"><strong>Teléfono</strong></label>
-                    {# CORRECCIÓN JINJA2: Usar 'or' en lugar de hasattr #}
                     <p class="form-control-plaintext">{{ persona.telefono or 'No especificado' }}</p>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label"><strong>Dirección</strong></label>
-                    {# CORRECCIÓN JINJA2: Usar 'or' en lugar de hasattr #}
                     <p class="form-control-plaintext">{{ persona.direccion or 'No especificada' }}</p>
                 </div>
             </div>

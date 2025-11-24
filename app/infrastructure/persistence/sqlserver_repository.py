@@ -636,7 +636,6 @@ class SqlServerPersonalRepository(IPersonalRepository):
         
         finally: # 💡 CORRECCIÓN: Agregar bloque finally para cerrar la conexión.
             cursor.close()
-            conn.close()
             
     # Llama a un SP para listar, filtrar y paginar al personal.
     def get_all_paginated(self, page, per_page, filters):

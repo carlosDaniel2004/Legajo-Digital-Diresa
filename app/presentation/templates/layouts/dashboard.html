@@ -72,6 +72,28 @@
             </a>
             {% endif %}
 
+            {# --- Opciones para Personal / Empleado (AGREGADO) --- #}
+            {% if current_user.rol == 'Personal' or current_user.rol == 'Empleado' %}
+            <a href="{{ url_for('personal.ver_datos_personales') }}" class="list-group-item {% if request.endpoint == 'personal.ver_datos_personales' %}active{% endif %}">
+                <i class="bi bi-person-badge"></i>Mis Datos
+            </a>
+            <a href="{{ url_for('personal.ver_mi_legajo') }}" class="list-group-item {% if request.endpoint == 'personal.ver_mi_legajo' %}active{% endif %}">
+                <i class="bi bi-folder2-open"></i>Legajo Digital
+            </a>
+            <a href="{{ url_for('personal.actualizar_datos') }}" class="list-group-item {% if request.endpoint == 'personal.actualizar_datos' %}active{% endif %}">
+                <i class="bi bi-pencil-square"></i>Rectificar Datos
+            </a>
+            <a href="{{ url_for('personal.solicitar_cambio_documento') }}" class="list-group-item {% if request.endpoint == 'personal.solicitar_cambio_documento' %}active{% endif %}">
+                <i class="bi bi-file-earmark-diff"></i>Cambio Documento
+            </a>
+            <a href="{{ url_for('personal.solicitar_cancelacion') }}" class="list-group-item {% if request.endpoint == 'personal.solicitar_cancelacion' %}active{% endif %}">
+                <i class="bi bi-trash"></i>Solicitar Cancelación
+            </a>
+            <a href="{{ url_for('personal.derecho_oposicion') }}" class="list-group-item {% if request.endpoint == 'personal.derecho_oposicion' %}active{% endif %}">
+                <i class="bi bi-shield-slash"></i>Derecho Oposición
+            </a>
+            {% endif %}
+
             {# --- Opciones para Sistemas --- #}
             {% if current_user.rol == 'Sistemas' %}
             <a href="{{ url_for('sistemas.auditoria') }}" class="list-group-item {% if request.endpoint == 'sistemas.auditoria' %}active{% endif %}">
