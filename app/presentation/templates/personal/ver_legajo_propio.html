@@ -2,16 +2,28 @@
 
 {% block title %}Mi Legajo Digital{% endblock %}
 
-{% block content %}
+{% block dashboard_content %}
 <div class="container-fluid">
 
-    <!-- Page Heading -->
+    <!-- Encabezado -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Mi Legajo Digital</h1>
         <a href="{{ url_for('personal.inicio') }}" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
             <i class="fas fa-arrow-left fa-sm text-white-50"></i> Volver
         </a>
     </div>
+
+    <!-- Mensajes -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show shadow-sm" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
     <!-- Ficha Resumen -->
     <div class="card shadow mb-4">
@@ -21,7 +33,6 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-md-2 text-center mb-3">
-                    <!-- Placeholder imagen -->
                     <div class="rounded-circle bg-gray-200 d-flex align-items-center justify-content-center mx-auto" style="width: 100px; height: 100px;">
                         <i class="fas fa-user fa-3x text-gray-400"></i>
                     </div>
@@ -49,58 +60,34 @@
         </div>
     </div>
 
-    <!-- Pestañas de Información -->
+    <!-- Pestañas -->
     <div class="card shadow mb-4">
         <div class="card-header p-0">
             <ul class="nav nav-tabs" id="legajoTab" role="tablist" style="background-color: #f8f9fc;">
-                <li class="nav-item">
-                    <a class="nav-link active" id="docs-tab" data-toggle="tab" href="#documentos" role="tab">
-                        <i class="fas fa-file-pdf text-danger"></i> Documentos Digitales
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="contratos-tab" data-toggle="tab" href="#contratos" role="tab">
-                        <i class="fas fa-file-contract text-primary"></i> Contratos
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="estudios-tab" data-toggle="tab" href="#estudios" role="tab">
-                        <i class="fas fa-graduation-cap text-info"></i> Estudios
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="capacitacion-tab" data-toggle="tab" href="#capacitaciones" role="tab">
-                        <i class="fas fa-chalkboard-teacher text-success"></i> Capacitaciones
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="historial-tab" data-toggle="tab" href="#historial" role="tab">
-                        <i class="fas fa-briefcase text-secondary"></i> Historial Laboral
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="licencias-tab" data-toggle="tab" href="#licencias" role="tab">
-                        <i class="fas fa-umbrella-beach text-warning"></i> Licencias
-                    </a>
-                </li>
+                <li class="nav-item"><a class="nav-link active" id="docs-tab" data-toggle="tab" href="#documentos" role="tab">Documentos</a></li>
+                <li class="nav-item"><a class="nav-link" id="contratos-tab" data-toggle="tab" href="#contratos" role="tab">Contratos</a></li>
+                <li class="nav-item"><a class="nav-link" id="estudios-tab" data-toggle="tab" href="#estudios" role="tab">Estudios</a></li>
+                <li class="nav-item"><a class="nav-link" id="capacitacion-tab" data-toggle="tab" href="#capacitaciones" role="tab">Capacitaciones</a></li>
+                <li class="nav-item"><a class="nav-link" id="historial-tab" data-toggle="tab" href="#historial" role="tab">Historial</a></li>
+                <li class="nav-item"><a class="nav-link" id="licencias-tab" data-toggle="tab" href="#licencias" role="tab">Licencias</a></li>
             </ul>
         </div>
         
         <div class="card-body">
             <div class="tab-content" id="legajoTabContent">
                 
-                <!-- 1. Documentos Digitales -->
+                <!-- DOCUMENTOS -->
                 <div class="tab-pane fade show active" id="documentos" role="tabpanel">
                     {% if legajo.documentos %}
                     <div class="table-responsive">
-                        <table class="table table-hover">
+                        <table class="table table-hover align-middle">
                             <thead class="thead-light">
                                 <tr>
-                                    <th>Tipo Documento</th>
+                                    <th>Tipo</th>
                                     <th>Sección</th>
                                     <th>Nombre Archivo</th>
-                                    <th>Fecha Subida</th>
-                                    <th>Acciones</th>
+                                    <th>Fecha</th>
+                                    <th class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -110,13 +97,21 @@
                                     <td>{{ doc.nombre_seccion }}</td>
                                     <td>{{ doc.nombre_archivo }}</td>
                                     <td>{{ doc.fecha_subida }}</td>
-                                    <td>
-                                        <a href="{{ url_for('legajos.ver_documento', id_documento=doc.id_documento) }}" target="_blank" class="btn btn-info btn-sm">
-                                            <i class="fas fa-eye"></i> Ver
-                                        </a>
-                                        <a href="{{ url_for('legajos.descargar_documento', id_documento=doc.id_documento) }}" class="btn btn-success btn-sm">
-                                            <i class="fas fa-download"></i>
-                                        </a>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <!-- Ver -->
+                                            <a href="{{ url_for('legajo.ver_documento', documento_id=doc.id_documento) }}" target="_blank" class="btn btn-info btn-sm" title="Ver">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <!-- Descargar -->
+                                            <a href="{{ url_for('legajo.ver_documento', documento_id=doc.id_documento) }}?download=1" class="btn btn-success btn-sm" title="Descargar">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            <!-- Solicitar Cambio (NUEVO) -->
+                                            <a href="{{ url_for('personal.solicitar_cambio_documento', documento_id=doc.id_documento) }}" class="btn btn-warning btn-sm text-white" title="Solicitar Cambio / Corrección">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -124,159 +119,82 @@
                         </table>
                     </div>
                     {% else %}
-                    <div class="alert alert-light text-center">No hay documentos digitalizados disponibles.</div>
+                    <div class="alert alert-light text-center">No hay documentos.</div>
                     {% endif %}
                 </div>
 
-                <!-- 2. Contratos -->
+                <!-- CONTRATOS -->
                 <div class="tab-pane fade" id="contratos" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>Tipo Contrato</th>
-                                    <th>Modalidad</th>
-                                    <th>Fecha Inicio</th>
-                                    <th>Fecha Fin</th>
-                                    <th>Sueldo</th>
-                                    <th>Resolución</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for c in legajo.contratos %}
-                                <tr>
-                                    <td>{{ c.tipo_contrato_nombre }}</td>
-                                    <td>{{ c.modalidad }}</td>
-                                    <td>{{ c.fecha_inicio }}</td>
-                                    <td>{{ c.fecha_fin or 'Indeterminado' }}</td>
-                                    <td>S/. {{ c.sueldo }}</td>
-                                    <td>{{ c.resolucion }}</td>
-                                </tr>
-                                {% else %}
-                                <tr><td colspan="6" class="text-center">Sin registros.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                    {% if legajo.contratos %}
+                    <table class="table table-bordered">
+                        <thead class="thead-light"><tr><th>Tipo</th><th>Modalidad</th><th>Inicio</th><th>Fin</th><th>Sueldo</th><th>Res.</th></tr></thead>
+                        <tbody>
+                            {% for c in legajo.contratos %}
+                            <tr><td>{{ c.tipo_contrato_nombre }}</td><td>{{ c.modalidad }}</td><td>{{ c.fecha_inicio }}</td><td>{{ c.fecha_fin or 'Indet.' }}</td><td>{{ c.sueldo }}</td><td>{{ c.resolucion }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}<p class="text-center text-muted p-3">Sin registros.</p>{% endif %}
                 </div>
 
-                <!-- 3. Estudios -->
+                <!-- ESTUDIOS -->
                 <div class="tab-pane fade" id="estudios" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>Nivel</th>
-                                    <th>Institución</th>
-                                    <th>Carrera/Título</th>
-                                    <th>Fechas</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for e in legajo.estudios %}
-                                <tr>
-                                    <td>{{ e.nivel_educativo }}</td>
-                                    <td>{{ e.institucion }}</td>
-                                    <td>{{ e.carrera or e.titulo_obtenido }}</td>
-                                    <td>{{ e.fecha_inicio }} - {{ e.fecha_fin }}</td>
-                                </tr>
-                                {% else %}
-                                <tr><td colspan="4" class="text-center">Sin registros.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                     {% if legajo.estudios %}
+                    <table class="table table-bordered">
+                        <thead class="thead-light"><tr><th>Nivel</th><th>Institución</th><th>Título</th><th>Fechas</th></tr></thead>
+                        <tbody>
+                            {% for e in legajo.estudios %}
+                            <tr><td>{{ e.nivel_educativo }}</td><td>{{ e.institucion }}</td><td>{{ e.carrera or e.titulo_obtenido }}</td><td>{{ e.fecha_inicio }} - {{ e.fecha_fin }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}<p class="text-center text-muted p-3">Sin registros.</p>{% endif %}
                 </div>
 
-                <!-- 4. Capacitaciones -->
+                <!-- CAPACITACIONES -->
                 <div class="tab-pane fade" id="capacitaciones" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>Evento</th>
-                                    <th>Organizador</th>
-                                    <th>Fechas</th>
-                                    <th>Horas</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for cap in legajo.capacitaciones %}
-                                <tr>
-                                    <td>{{ cap.nombre_evento }}</td>
-                                    <td>{{ cap.organizador }}</td>
-                                    <td>{{ cap.fecha_inicio }} al {{ cap.fecha_fin }}</td>
-                                    <td>{{ cap.duracion_horas }} hrs</td>
-                                </tr>
-                                {% else %}
-                                <tr><td colspan="4" class="text-center">Sin registros.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                     {% if legajo.capacitaciones %}
+                    <table class="table table-bordered">
+                        <thead class="thead-light"><tr><th>Evento</th><th>Organizador</th><th>Fechas</th><th>Horas</th></tr></thead>
+                        <tbody>
+                            {% for cap in legajo.capacitaciones %}
+                            <tr><td>{{ cap.nombre_evento }}</td><td>{{ cap.organizador }}</td><td>{{ cap.fecha_inicio }} al {{ cap.fecha_fin }}</td><td>{{ cap.duracion_horas }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}<p class="text-center text-muted p-3">Sin registros.</p>{% endif %}
                 </div>
 
-                <!-- 5. Historial Laboral -->
+                <!-- HISTORIAL -->
                 <div class="tab-pane fade" id="historial" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>Unidad Orgánica</th>
-                                    <th>Cargo</th>
-                                    <th>Fecha Inicio</th>
-                                    <th>Fecha Fin</th>
-                                    <th>Motivo Salida</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for h in legajo.historial %}
-                                <tr>
-                                    <td>{{ h.unidad_administrativa_nombre }}</td>
-                                    <td>{{ h.nombre_cargo }}</td>
-                                    <td>{{ h.fecha_inicio }}</td>
-                                    <td>{{ h.fecha_fin or 'Actual' }}</td>
-                                    <td>{{ h.motivo_salida }}</td>
-                                </tr>
-                                {% else %}
-                                <tr><td colspan="5" class="text-center">Sin registros.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                     {% if legajo.historial %}
+                    <table class="table table-bordered">
+                        <thead class="thead-light"><tr><th>Unidad</th><th>Cargo</th><th>Inicio</th><th>Fin</th><th>Motivo</th></tr></thead>
+                        <tbody>
+                            {% for h in legajo.historial %}
+                            <tr><td>{{ h.unidad_administrativa_nombre }}</td><td>{{ h.nombre_cargo }}</td><td>{{ h.fecha_inicio }}</td><td>{{ h.fecha_fin or 'Actual' }}</td><td>{{ h.motivo_salida }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}<p class="text-center text-muted p-3">Sin registros.</p>{% endif %}
                 </div>
 
-                <!-- 6. Licencias -->
+                <!-- LICENCIAS -->
                 <div class="tab-pane fade" id="licencias" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>Tipo Licencia</th>
-                                    <th>Inicio</th>
-                                    <th>Fin</th>
-                                    <th>Resolución</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for l in legajo.licencias %}
-                                <tr>
-                                    <td>{{ l.tipo_licencia_nombre }}</td>
-                                    <td>{{ l.fecha_inicio }}</td>
-                                    <td>{{ l.fecha_fin }}</td>
-                                    <td>{{ l.resolucion }}</td>
-                                </tr>
-                                {% else %}
-                                <tr><td colspan="4" class="text-center">Sin registros.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                     {% if legajo.licencias %}
+                    <table class="table table-bordered">
+                        <thead class="thead-light"><tr><th>Tipo</th><th>Inicio</th><th>Fin</th><th>Resolución</th></tr></thead>
+                        <tbody>
+                            {% for l in legajo.licencias %}
+                            <tr><td>{{ l.tipo_licencia_nombre }}</td><td>{{ l.fecha_inicio }}</td><td>{{ l.fecha_fin }}</td><td>{{ l.resolucion }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}<p class="text-center text-muted p-3">Sin registros.</p>{% endif %}
                 </div>
 
             </div>
         </div>
     </div>
-
 </div>
 {% endblock %}

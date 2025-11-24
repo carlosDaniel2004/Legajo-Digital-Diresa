@@ -35,6 +35,10 @@
             {% elif current_user.rol == 'AdministradorLegajos' %}
                 {% set HOME_URL = url_for('legajo.dashboard') %}
                 {% set active_test = 'legajo.dashboard' %}
+            {% elif current_user.rol == 'Personal' or current_user.rol == 'Empleado' %}
+                 {# Caso para el empleado normal #}
+                {% set HOME_URL = url_for('personal.inicio') %}
+                {% set active_test = 'personal.inicio' %}    
             {% endif %}
 
             {# 1. ENLACE DE INICIO #}

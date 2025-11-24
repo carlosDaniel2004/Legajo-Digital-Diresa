@@ -1,24 +1,140 @@
-{% extends "layouts/dashboard.html" %} {% block title %}Mi Panel - Legajo Digital{% endblock %}
+{% extends "personal/dashboard.html" %} 
+{% block title %}Mi Panel - Legajo Digital{% endblock %}
 
 {% block page_title %}Bienvenido al Portal del Personal{% endblock %}
 
 {% block content %}
 <div class="row">
+    
+    {# 1. TARJETA: Ver Mis Datos (Resumen) #}
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card border-left-primary shadow h-100 py-2">
             <div class="card-body">
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                            Mi Información</div>
+                            Mis Datos</div>
                         <div class="h5 mb-0 font-weight-bold text-gray-800">
-                            <a href="{{ url_for('personal.ver_mi_legajo') }}" class="text-decoration-none stretched-link">
-                                Ver Mi Legajo
+                            <a href="{{ url_for('personal.ver_datos_personales') }}" class="text-decoration-none stretched-link">
+                                Ver Mis Datos
                             </a>
                         </div>
                     </div>
                     <div class="col-auto">
-                        <i class="fas fa-id-card fa-2x text-gray-300"></i>
+                        <i class="bi bi-person-badge fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# 2. TARJETA: Ver Legajo Completo (Art. 8 - Acceso) #}
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Legajo Digital</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <a href="{{ url_for('personal.ver_mi_legajo') }}" class="text-decoration-none stretched-link">
+                                Ver Legajo Completo
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-folder2-open fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {# 3. TARJETA: Rectificar Datos (Art. 9 - Rectificación) #}
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Cambios</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <a href="{{ url_for('personal.actualizar_datos') }}" class="text-decoration-none stretched-link">
+                                Rectificar Datos
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-pencil-square fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {# 4. TARJETA AÑADIDA: Cambio de Documento #}
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Documentos</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <a href="{{ url_for('personal.solicitar_cambio_documento') }}" class="text-decoration-none stretched-link">
+                                Solicitar Cambio Doc.
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-file-earmark-diff fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="row">
+    {# 5. TARJETA: Solicitar Cancelación (Art. 10 - Cancelación) #}
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                            Derecho ARCO</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <a href="{{ url_for('personal.solicitar_cancelacion') }}" class="text-decoration-none stretched-link">
+                                Solicitar Cancelación
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-trash fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# 6. TARJETA: Derecho de Oposición (Art. 11 - Oposición) #}
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-secondary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                            Derecho ARCO</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <a href="{{ url_for('personal.derecho_oposicion') }}" class="text-decoration-none stretched-link">
+                                Derecho de Oposición
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-shield-slash fa-2x text-gray-300"></i>
                     </div>
                 </div>
             </div>

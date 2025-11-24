@@ -133,6 +133,7 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
                 u.activo,
                 u.two_factor_code,
                 u.two_factor_expiry,
+                u.id_personal,
                 r.nombre_rol
             FROM usuarios u
             LEFT JOIN roles r ON u.id_rol = r.id_rol
@@ -163,6 +164,7 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
                         u.id_rol, 
                         u.activo,
                         u.two_factor_code,
+                        u.id_personal,
                         u.two_factor_expiry
                     FROM usuarios u
                     WHERE u.id_usuario = ?
@@ -172,6 +174,7 @@ class SqlServerUsuarioRepository(IUsuarioRepository):
                     
                     if row:
                         row_dict = _row_to_dict(cursor, row)
+                        
                         return Usuario(**row_dict) if row_dict else None
                     return None
                 except Exception as e2:
@@ -603,28 +606,38 @@ class SqlServerPersonalRepository(IPersonalRepository):
         # Se asume que el SP devuelve filas que se pueden mapear al modelo Documento.
         return [_row_to_dict(cursor, row) for row in cursor.fetchall()]
 
+    # RUTA: app/infrastructure/persistence/sqlserver_repository.py
+
+# ... dentro de class SqlServerPersonalRepository ...
+
     def get_full_legajo_by_id(self, personal_id):
         conn = get_db_read()
         cursor = conn.cursor()
-        cursor.execute("{CALL sp_obtener_legajo_completo_por_personal(?)}", personal_id)
         
-        # El primer resultado es la información del personal.
-        personal_info = _row_to_dict(cursor, cursor.fetchone())
-        if not personal_info:
-            return None # Si no hay datos personales, el legajo no existe.
-
-        legajo = {"personal": personal_info}
-        
-        # Se procesan los siguientes conjuntos de resultados.
-        if cursor.nextset(): legajo["estudios"] = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
-        if cursor.nextset(): legajo["capacitaciones"] = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
-        if cursor.nextset(): legajo["contratos"] = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
-        if cursor.nextset(): legajo["historial_laboral"] = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
-        if cursor.nextset(): legajo["licencias"] = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
-        if cursor.nextset(): legajo["documentos"] = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+        try: # 💡 CORRECCIÓN: Agregar bloque try
+            cursor.execute("{CALL sp_obtener_legajo_completo_por_personal(?)}", personal_id)
             
-        return legajo
-    
+            # El primer resultado es la información del personal.
+            personal_info = _row_to_dict(cursor, cursor.fetchone())
+            if not personal_info:
+                return None 
+
+            legajo = {"personal": personal_info}
+            
+            # Se procesan los siguientes conjuntos de resultados.
+            if cursor.nextset(): legajo["estudios"] = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+            if cursor.nextset(): legajo["capacitaciones"] = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+            if cursor.nextset(): legajo["contratos"] = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+            if cursor.nextset(): legajo["historial_laboral"] = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+            if cursor.nextset(): legajo["licencias"] = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+            if cursor.nextset(): legajo["documentos"] = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+                
+            return legajo
+        
+        finally: # 💡 CORRECCIÓN: Agregar bloque finally para cerrar la conexión.
+            cursor.close()
+            conn.close()
+            
     # Llama a un SP para listar, filtrar y paginar al personal.
     def get_all_paginated(self, page, per_page, filters):
         conn = get_db_read()
@@ -742,11 +755,43 @@ class SqlServerPersonalRepository(IPersonalRepository):
         conn.commit()
         
     def find_by_id(self, personal_id):
+        # Aseguramos la inicialización del logger para debug si la usamos
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[DEBUG REPO] Buscando Personal ID: {personal_id}") 
+        
         conn = get_db_read()
         cursor = conn.cursor()
-        cursor.execute("{CALL sp_obtener_personal_por_id(?)}", personal_id)
-        row = cursor.fetchone()
-        return Personal.from_dict(_row_to_dict(cursor, row)) if row else None
+        
+        try:
+            cursor.execute("{CALL sp_obtener_personal_por_id(?)}", personal_id)
+            row = cursor.fetchone()
+            
+            if row:
+                row_dict = _row_to_dict(cursor, row)
+                
+                # 💡 CORRECCIÓN CRÍTICA: Asegurar que el ID de la persona esté en el diccionario.
+                # Esto garantiza que el objeto Personal.from_dict() tenga su llave primaria.
+                row_dict['id_personal'] = personal_id 
+                
+                personal_obj = Personal.from_dict(row_dict)
+
+                if personal_obj and hasattr(personal_obj, 'nombres'):
+                     logger.info(f"[DEBUG REPO] Registro encontrado: {personal_obj.nombres} {personal_obj.apellidos}")
+                
+                return personal_obj
+            
+            logger.warning(f"[DEBUG REPO] Registro NO encontrado para ID: {personal_id}.")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error al buscar Personal ID {personal_id}: {e}", exc_info=True)
+            return None
+        finally:
+            cursor.close()
+            conn.close()
+
+
 
     def get_tipos_documento_by_seccion(self, id_seccion):
         """
