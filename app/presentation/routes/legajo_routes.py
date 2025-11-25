@@ -395,7 +395,7 @@ def ver_documento(documento_id):
         
         if not document or not document.get('data'):
             flash('El documento no fue encontrado.', 'danger')
-            return redirect(request.referrer or url_for('main_dashboard'))
+            return redirect(request.referrer or url_for('index'))
 
         return send_file(
             io.BytesIO(document['data']),
@@ -405,7 +405,7 @@ def ver_documento(documento_id):
     except Exception as e:
         current_app.logger.error(f"Error al visualizar documento {documento_id}: {e}")
         flash('Ocurrió un error al intentar mostrar el archivo.', 'danger')
-        return redirect(request.referrer or url_for('main_dashboard'))
+        return redirect(request.referrer or url_for('index'))
     
 
 @legajo_bp.route('/documento/<int:documento_id>/eliminar', methods=['POST'])
@@ -430,7 +430,7 @@ def eliminar_documento(documento_id):
     
     # Redirige al usuario a la página anterior
     print("DEBUG: Redirigiendo al usuario.")
-    return redirect(request.referrer or url_for('main_dashboard'))
+    return redirect(request.referrer or url_for('index'))
 
 
 @legajo_bp.route('/documento/<int:documento_id>/visualizar')
@@ -453,7 +453,7 @@ def visualizar_documento(documento_id):
         
         if not document or not document.get('data'):
             flash('El documento no fue encontrado.', 'danger')
-            return redirect(request.referrer or url_for('main_dashboard'))
+            return redirect(request.referrer or url_for('index'))
 
         mimetype, _ = mimetypes.guess_type(document['filename'])
         if not mimetype:
@@ -475,7 +475,7 @@ def visualizar_documento(documento_id):
     except Exception as e:
         current_app.logger.error(f"Error al visualizar documento {documento_id}: {e}")
         flash('Error visualizando archivo.', 'danger')
-        return redirect(request.referrer or url_for('main_dashboard'))    
+        return redirect(request.referrer or url_for('index'))    
 
 
 @legajo_bp.route('/api/personal/check_dni/<string:dni>')
