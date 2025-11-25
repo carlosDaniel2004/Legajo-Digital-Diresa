@@ -3,7 +3,7 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms.validators import DataRequired, Length, Regexp, Optional, Email, NumberRange, EqualTo, ValidationError
-from wtforms import StringField, PasswordField, SubmitField, SelectField, DateField, TextAreaField, FileField, BooleanField
+from wtforms import DecimalField, StringField, PasswordField, SubmitField, SelectField, DateField, TextAreaField, FileField, BooleanField
 from datetime import datetime, timedelta
 
 # ===== VALIDADORES PERSONALIZADOS (ANTES DE LAS CLASES) =====
@@ -271,3 +271,18 @@ class BulkUploadForm(FlaskForm):
         FileAllowed(['xlsx'], '¡Solo se permiten archivos de Excel (.xlsx)!')
     ])
     submit = SubmitField('Procesar Archivo')
+
+class ContratoInicialForm(FlaskForm):
+    """Formulario para registrar el primer contrato y cargo."""
+    # Datos del Contrato
+    id_tipo_contrato = SelectField('Tipo de Contrato', validators=[DataRequired()])
+    fecha_inicio = DateField('Fecha de Inicio', format='%Y-%m-%d', validators=[DataRequired()])
+    fecha_fin = DateField('Fecha de Fin (Opcional)', format='%Y-%m-%d', validators=[Optional()])
+    sueldo = DecimalField('Sueldo Mensual (S/.)', places=2, validators=[DataRequired()])
+    resolucion = StringField('N° Resolución / Documento', validators=[DataRequired(), Length(max=300)])
+    
+    # Datos del Cargo/Puesto
+    id_cargo = SelectField('Cargo / Puesto', validators=[DataRequired()])
+    id_unidad = SelectField('Unidad Administrativa', validators=[DataRequired()])
+    
+    submit = SubmitField('Guardar y Finalizar')

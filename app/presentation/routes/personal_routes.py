@@ -267,32 +267,65 @@ def descargar_datos():
 @login_required
 def ver_datos_personales():
     """
-    Vista de datos personales resumida (Endpoint: personal.ver_datos_personales).
+    Vista de datos personales resumida con lógica de extracción de datos laborales.
     """
     try:
-        if not current_user.id_personal:
+        if not getattr(current_user, 'id_personal', None):
             flash('No tiene un legajo asociado.', 'warning')
             return redirect(url_for('personal.inicio'))
 
         legajo_service = current_app.config['LEGAJO_SERVICE']
         personal_repo = legajo_service._personal_repo
         
-        # 💡 CORRECCIÓN: Llamar solo a get_full_legajo_by_id para reducir el riesgo de conflicto de conexión
+        # 1. Obtener el legajo completo (incluye historial, contratos, etc.)
         legajo_completo = personal_repo.get_full_legajo_by_id(current_user.id_personal)
         
         if not legajo_completo:
             flash('Error al obtener el legajo completo.', 'danger')
             return redirect(url_for('personal.inicio'))
 
-        # Extraer los datos básicos de la persona del resultado completo
+        # 2. Extraer datos básicos
         persona = legajo_completo.get('personal')
 
-        logger.info(f"FLOW: Empleado {current_user.username} visualizó sus datos personales (Resumen).")
+        # 3. LÓGICA DE EXTRACCIÓN: Preparar datos planos para la vista
+        # La vista espera claves directas como 'cargo', 'unidad', etc.
+        datos_vista = {}
+
+        # -- Extraer Cargo y Unidad del Historial Laboral más reciente --
+        historial = legajo_completo.get('historial_laboral', [])
+        if historial and len(historial) > 0:
+            # Asumimos que el SP devuelve ordenado por fecha (el primero es el actual)
+            ultimo_puesto = historial[0]
+            datos_vista['cargo'] = ultimo_puesto.get('nombre_cargo')
+            datos_vista['unidad'] = ultimo_puesto.get('unidad_administrativa_nombre')
+        else:
+            # Fallback si no hay historial
+            datos_vista['cargo'] = 'No registrado'
+            datos_vista['unidad'] = 'No asignada'
+
+        # -- Extraer Datos del Contrato más reciente --
+        contratos = legajo_completo.get('contratos', [])
+        if contratos and len(contratos) > 0:
+            ultimo_contrato = contratos[0]
+            datos_vista['tipo_contrato'] = ultimo_contrato.get('tipo_contrato_nombre')
+            # Si la persona no tiene fecha de ingreso, usamos la del primer contrato
+            datos_vista['fecha_ingreso'] = ultimo_contrato.get('fecha_inicio')
+        else:
+            datos_vista['tipo_contrato'] = 'Sin contrato activo'
+            
+        # -- Fechas --
+        # Prioridad: Fecha en tabla personal > Fecha primer contrato > N/A
+        if persona and persona.get('fecha_ingreso'):
+            datos_vista['fecha_ingreso'] = persona.get('fecha_ingreso')
+        elif 'fecha_ingreso' not in datos_vista:
+            datos_vista['fecha_ingreso'] = 'N/A'
+
+        logger.info(f"FLOW: Empleado {current_user.username} visualizó sus datos personales.")
         
-        # Pasamos las variables requeridas por el template
+        # Pasamos 'datos_vista' como la variable 'legajo' que espera la plantilla
         return render_template('personal/ver_datos_personales.html', 
                                persona=persona, 
-                               legajo=legajo_completo) 
+                               legajo=datos_vista) 
 
     except Exception as e:
         logger.error(f"FATAL: Error al cargar mis datos personales: {e}", exc_info=True)

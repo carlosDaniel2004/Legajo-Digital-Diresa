@@ -1,3 +1,4 @@
+
 # Sistema de Legajo Digital - DIRESA Pasco
 
 Este es un sistema de gestión de legajos digitales desarrollado en Python con el framework Flask, siguiendo una arquitectura en capas para asegurar su mantenibilidad y escalabilidad.

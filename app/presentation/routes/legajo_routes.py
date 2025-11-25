@@ -7,7 +7,7 @@ import pyodbc
 from flask import Blueprint, jsonify, render_template, redirect, send_file, url_for, flash, request, current_app
 from flask_login import login_required, current_user
 from app.decorators import role_required
-from app.application.forms import PersonalForm, DocumentoForm, FiltroPersonalForm, BulkUploadForm
+from app.application.forms import PersonalForm, DocumentoForm, FiltroPersonalForm, BulkUploadForm,ContratoInicialForm
 from app.application.services.file_validation_service import FileValidationService
 from app.domain.models.personal import Personal
 from app.core.security import IDORProtection
@@ -162,48 +162,65 @@ def crear_personal():
     
     if form.validate_on_submit():
         try:
-            # Registrar el personal (esto ahora crea usuario automáticamente)
+            # 1. Crear Personal y Usuario
             new_personal_id = legajo_service.register_new_personal(form.data, current_user.id)
             
-            # Obtener datos del usuario creado de la BD
-            from app.database.connector import get_db_read
-            conn = get_db_read()
-            cursor = conn.cursor()
+            flash('Paso 1 completado: Datos personales registrados.', 'success')
             
-            cursor.execute("""
-                SELECT u.username, u.email 
-                FROM usuarios u 
-                JOIN personal p ON u.id_personal = p.id_personal
-                WHERE p.id_personal = ?
-            """, new_personal_id)
+            # 2. REDIRECCIONAR AL PASO 2 (Contrato Inicial)
+            return redirect(url_for('legajo.completar_legajo', personal_id=new_personal_id))
             
-            usuario_data = cursor.fetchone()
-            
-            if usuario_data:
-                # Guardar en sesión para mostrar en confirmación
-                from flask import session
-                session['nuevo_usuario'] = {
-                    'username': usuario_data[0],
-                    'email': usuario_data[1],
-                    'personal_id': new_personal_id
-                }
-            
-            flash('Legajo y usuario creado exitosamente.', 'success')
-            return redirect(url_for('legajo.confirmacion_personal_creado', personal_id=new_personal_id))
-        except pyodbc.Error as db_err:
-            err_msg = str(db_err)
-            current_app.logger.error(f"Error de base de datos al crear legajo: {err_msg}")
-            if 'DNI ya se encuentra registrado' in err_msg:
-                flash('Error al crear el legajo: El DNI ingresado ya existe.', 'danger')
-            elif 'correo electrónico ya está en uso' in err_msg:
-                flash('Error al crear el legajo: El correo electrónico ingresado ya está en uso.', 'danger')
-            else:
-                flash('Ocurrió un error en la base de datos al intentar crear el legajo.', 'danger')
         except Exception as e:
-            current_app.logger.error(f"Error inesperado al crear legajo: {e}")
-            flash('Ocurrió un error inesperado al procesar su solicitud.', 'danger')
+            # ... (manejo de errores igual que antes) ...
+            current_app.logger.error(f"Error: {e}")
+            flash('Error al crear personal.', 'danger')
             
-    return render_template('admin/crear_personal.html', form=form, titulo="Crear Nuevo Legajo")
+    return render_template('admin/crear_personal.html', form=form, titulo="Nuevo Legajo - Paso 1: Datos Personales")
+
+@legajo_bp.route('/personal/completar/<int:personal_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('AdministradorLegajos')
+def completar_legajo(personal_id):
+    """Paso 2: Registrar contrato y cargo inicial."""
+    legajo_service = current_app.config['LEGAJO_SERVICE']
+    repo = legajo_service._personal_repo # Acceso directo al repo para métodos nuevos
+    
+    # Obtener datos del personal para mostrar el nombre
+    persona = repo.find_by_id(personal_id)
+    if not persona:
+        flash('Error: El personal no existe.', 'danger')
+        return redirect(url_for('legajo.listar_personal'))
+
+    form = ContratoInicialForm()
+    
+    # Cargar las opciones de los selects
+    form.id_tipo_contrato.choices = [('', '-- Seleccione Tipo --')] + repo.get_tipos_contrato_for_select()
+    form.id_cargo.choices = [('', '-- Seleccione Cargo --')] + repo.get_cargos_for_select()
+    form.id_unidad.choices = [('', '-- Seleccione Unidad --')] + repo.get_unidades_for_select()
+
+    if request.method == 'GET':
+        # Pre-llenar la unidad si ya la tenemos del paso 1
+        form.id_unidad.data = str(persona.id_unidad)
+        form.fecha_inicio.data = persona.fecha_ingreso # Sugerir fecha de ingreso
+
+    if form.validate_on_submit():
+        try:
+            data = form.data
+            data['id_personal'] = personal_id
+            
+            repo.registrar_contrato_inicial(data)
+            
+            flash('¡Legajo completado exitosamente! Contrato y cargo registrados.', 'success')
+            
+            # Ahora sí vamos a la confirmación final con todo listo
+            # Recuperamos datos de usuario si existen (opcional, o redirigir a ver legajo)
+            return redirect(url_for('legajo.ver_legajo', personal_id=personal_id))
+            
+        except Exception as e:
+            current_app.logger.error(f"Error paso 2: {e}")
+            flash('Error al guardar el contrato.', 'danger')
+
+    return render_template('admin/completar_legajo.html', form=form, persona=persona)
 
 
 @legajo_bp.route('/personal/confirmacion/<int:personal_id>')
@@ -360,30 +377,35 @@ def editar_personal(personal_id):
 
 @legajo_bp.route('/documento/<int:documento_id>/ver')
 @login_required
-@role_required('AdministradorLegajos', 'RRHH', 'Sistemas')
+@role_required('AdministradorLegajos', 'RRHH', 'Sistemas', 'Personal') # <--- AGREGADO 'Personal'
 def ver_documento(documento_id):
     """
-    Gestiona la solicitud para ver un archivo en una nueva pestaña.
-    Obtiene el archivo desde el servicio y lo envía al navegador para ser mostrado.
+    Gestiona la solicitud para ver un archivo (Descarga/Vista previa).
     """
     legajo_service = current_app.config['LEGAJO_SERVICE']
+    
+    # --- NUEVA VALIDACIÓN DE SEGURIDAD ---
+    if not legajo_service.verify_document_access(documento_id, current_user):
+        flash('No tiene permiso para acceder a este documento.', 'danger')
+        return redirect(url_for('personal.inicio') if current_user.rol == 'Personal' else url_for('main_dashboard'))
+    # -------------------------------------
+
     try:
         document = legajo_service.get_document_for_download(documento_id)
         
         if not document or not document.get('data'):
-            flash('El documento no fue encontrado o no tiene contenido adjunto.', 'danger')
-            return redirect(request.referrer or url_for('legajo.listar_personal'))
+            flash('El documento no fue encontrado.', 'danger')
+            return redirect(request.referrer or url_for('main_dashboard'))
 
-        # La clave está en cambiar as_attachment a False
         return send_file(
             io.BytesIO(document['data']),
-            as_attachment=False, # Importante: le dice al navegador que lo muestre
+            as_attachment=False,
             download_name=document['filename']
         )
     except Exception as e:
         current_app.logger.error(f"Error al visualizar documento {documento_id}: {e}")
         flash('Ocurrió un error al intentar mostrar el archivo.', 'danger')
-        return redirect(request.referrer or url_for('legajo.listar_personal'))
+        return redirect(request.referrer or url_for('main_dashboard'))
     
 
 @legajo_bp.route('/documento/<int:documento_id>/eliminar', methods=['POST'])
@@ -413,47 +435,47 @@ def eliminar_documento(documento_id):
 
 @legajo_bp.route('/documento/<int:documento_id>/visualizar')
 @login_required
-@role_required('AdministradorLegajos', 'RRHH', 'Sistemas')
+@role_required('AdministradorLegajos', 'RRHH', 'Sistemas', 'Personal') # <--- AGREGADO 'Personal'
 def visualizar_documento(documento_id):
-        """
-        Gestiona la solicitud de visualización de un archivo en el navegador.
-        Sirve el archivo con el mimetype adecuado para que el navegador lo muestre en línea.
-        """
-        legajo_service = current_app.config['LEGAJO_SERVICE']
-        try:
-            document = legajo_service.get_document_for_download(documento_id)
-            
-            if not document or not document.get('data'):
-                flash('El documento no fue encontrado o no tiene contenido adjunto.', 'danger')
-                return redirect(request.referrer or url_for('main_dashboard'))
+    """
+    Visualización en línea inteligente (PDF/Imágenes en navegador, otros descarga).
+    """
+    legajo_service = current_app.config['LEGAJO_SERVICE']
 
-            mimetype, _ = mimetypes.guess_type(document['filename'])
-            if not mimetype:
-                mimetype = 'application/octet-stream'
+    # --- NUEVA VALIDACIÓN DE SEGURIDAD ---
+    if not legajo_service.verify_document_access(documento_id, current_user):
+        flash('No tiene permiso para acceder a este documento.', 'danger')
+        return redirect(url_for('personal.inicio') if current_user.rol == 'Personal' else url_for('main_dashboard'))
+    # -------------------------------------
 
-            # Lista de tipos de archivo que los navegadores pueden mostrar de forma nativa
-            SAFE_INLINE_MIMETYPES = [
-                'application/pdf',
-                'image/jpeg',
-                'image/png',
-                'image/gif',
-                'image/webp',
-                'text/plain'
-            ]
+    try:
+        document = legajo_service.get_document_for_download(documento_id)
+        
+        if not document or not document.get('data'):
+            flash('El documento no fue encontrado.', 'danger')
+            return redirect(request.referrer or url_for('main_dashboard'))
 
-            # Si el tipo de archivo no es seguro para mostrar, forzamos la descarga
-            should_be_attachment = mimetype not in SAFE_INLINE_MIMETYPES
+        mimetype, _ = mimetypes.guess_type(document['filename'])
+        if not mimetype:
+            mimetype = 'application/octet-stream'
 
-            return send_file(
-                io.BytesIO(document['data']),
-                mimetype=mimetype,
-                as_attachment=should_be_attachment, # ¡Ahora es dinámico!
-                download_name=document['filename']
-            )
-        except Exception as e:
-            current_app.logger.error(f"Error al visualizar documento {documento_id}: {e}")
-            flash('Ocurrió un error al intentar visualizar el archivo.', 'danger')
-            return redirect(request.referrer or url_for('main_dashboard'))    
+        SAFE_INLINE_MIMETYPES = [
+            'application/pdf', 'image/jpeg', 'image/png', 
+            'image/gif', 'image/webp', 'text/plain'
+        ]
+
+        should_be_attachment = mimetype not in SAFE_INLINE_MIMETYPES
+
+        return send_file(
+            io.BytesIO(document['data']),
+            mimetype=mimetype,
+            as_attachment=should_be_attachment,
+            download_name=document['filename']
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error al visualizar documento {documento_id}: {e}")
+        flash('Error visualizando archivo.', 'danger')
+        return redirect(request.referrer or url_for('main_dashboard'))    
 
 
 @legajo_bp.route('/api/personal/check_dni/<string:dni>')

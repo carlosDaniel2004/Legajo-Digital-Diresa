@@ -594,3 +594,22 @@ class LegajoService:
         """Elimina permanentemente un documento de la base de datos."""
         self._personal_repo.permanently_delete_document(document_id)
 
+    def verify_document_access(self, document_id, user):
+        """
+        Verifica si un usuario tiene permiso para ver un documento.
+        Retorna True si es admin/rrhh o si es el dueño del documento.
+        """
+        # Roles administrativos tienen acceso total
+        if user.rol in ['AdministradorLegajos', 'RRHH', 'Sistemas']:
+            return True
+            
+        # Para personal, verificar propiedad
+        if user.rol == 'Personal':
+            owner_id = self._personal_repo.get_document_owner(document_id)
+            user_personal_id = getattr(user, 'id_personal', None)
+            
+            # Si el documento existe y pertenece al usuario actual
+            return owner_id is not None and owner_id == user_personal_id
+            
+        return False
+
