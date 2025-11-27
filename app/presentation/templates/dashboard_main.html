@@ -9,7 +9,7 @@
 
 <div class="row g-4">
     
-    {% if current_user.rol in ['AdministradorLegajos'] %}
+    {% if current_user.rol in ['AdministradorLegajos', 'Sistemas'] %}
     <div class="col-md-6 col-lg-4"> {# Añadido col-lg-4 para un layout de 3 columnas en pantallas grandes #}
         <a href="{{ url_for('legajo.crear_personal') }}" class="dashboard-card new-legajo">
             <div class="card-icon">
@@ -36,8 +36,8 @@
     </div>
     {% endif %}
 
-    {#Cambios grupo 3: solo para rrhh en el centro de pantalla#}
-    {% if current_user.rol in ['RRHH'] %}
+    {#Cambios grupo 3: para rrhh y Sistemas en el centro de pantalla#}
+    {% if current_user.rol in ['RRHH', 'Sistemas'] %}
     <div class="col-md-6 col-lg-4">
         <a href="{{ url_for('rrhh.listar_personal') }}" class="dashboard-card consult-rrhh">
             <div class="card-icon">
@@ -62,7 +62,7 @@
     </div>
     {% endif %}
 
-    {% if current_user.rol in ['AdministradorLegajos'] %}
+    {% if current_user.rol in ['AdministradorLegajos', 'Sistemas'] %}
     <div class="col-md-6 col-lg-4">
         <a href="{{ url_for('legajo.listar_personal') }}" class="dashboard-card update-legajo">
             <div class="card-icon">
@@ -76,7 +76,7 @@
     </div>
     {% endif %}
     
-    {% if current_user.rol == 'Sistemas' %}
+    {% if current_user.rol in ['Sistemas'] %}
     <div class="col-md-6 col-lg-4">
         <a href="{{ url_for('sistemas.auditoria') }}" class="dashboard-card audit-card">
             <div class="card-icon">

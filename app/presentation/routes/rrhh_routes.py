@@ -113,18 +113,30 @@ def exportar_empleados_excel():
 @rrhh_bp.route('/panel')
 @login_required
 def panel_rrhh():
-    legajo_service = current_app.config['LEGAJO_SERVICE']
-    empleados_unidad = legajo_service.get_empleados_por_unidad()
+    try:
+        legajo_service = current_app.config['LEGAJO_SERVICE']
+        
+        # Obtener datos de empleados por unidad
+        empleados_unidad = legajo_service.get_empleados_por_unidad()
+        empleados_unidad = empleados_unidad if empleados_unidad else []
+        print("DEBUG empleados_unidad:", empleados_unidad)
 
-    # DEBUG temporal para consola
-    print("DEBUG empleados_unidad:", empleados_unidad)
+        # Obtener datos de empleados por estado (activo/inactivo)
+        empleados_estado = legajo_service.get_empleados_activos_inactivos()
+        empleados_estado = empleados_estado if empleados_estado else []
+        print("DEBUG empleados_estado:", empleados_estado)
 
-    # Acontinuación se tiene: Distribución de empleados activos vs inactivos
-    empleados_estado = legajo_service.get_empleados_activos_inactivos()
-    print("DEBUG empleados_estado:", empleados_estado)
+        # Obtener datos de empleados por sexo
+        empleados_sexo = legajo_service.get_empleados_por_sexo()
+        empleados_sexo = empleados_sexo if empleados_sexo else []
+        print("DEBUG empleados_sexo:", empleados_sexo)
 
-    # Acontinuación se tiene: Distribución de empleados segun genero
-    empleados_sexo = legajo_service.get_empleados_por_sexo()
+    except Exception as e:
+        print(f"ERROR al obtener datos de estadísticas: {str(e)}")
+        empleados_unidad = []
+        empleados_estado = []
+        empleados_sexo = []
+        flash('No se pudieron cargar las estadísticas. Intente nuevamente.', 'warning')
 
     # 👇 Aquí devolvemos la plantilla
     return render_template(

@@ -879,47 +879,66 @@ class SqlServerPersonalRepository(IPersonalRepository):
         Realiza una consulta para contar el número de empleados activos
         en cada unidad administrativa.
         """
-        conn = get_db_read()
-        cursor = conn.cursor()
-        query = """
-            SELECT ua.nombre AS nombre_unidad, COUNT(p.id_personal) AS cantidad
-            FROM unidad_administrativa ua
-            JOIN personal p ON ua.id_unidad = p.id_unidad
-            WHERE p.activo = 1
-            GROUP BY ua.nombre
-            ORDER BY cantidad DESC;
-        """
-        cursor.execute(query)
-        # Devuelve una lista de diccionarios, ideal para gráficos.
-        return [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+        try:
+            conn = get_db_read()
+            cursor = conn.cursor()
+            query = """
+                SELECT ua.nombre AS nombre_unidad, COUNT(p.id_personal) AS cantidad
+                FROM unidad_administrativa ua
+                LEFT JOIN personal p ON ua.id_unidad = p.id_unidad AND p.activo = 1
+                GROUP BY ua.nombre, ua.id_unidad
+                ORDER BY cantidad DESC;
+            """
+            cursor.execute(query)
+            result = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+            cursor.close()
+            conn.close()
+            return result if result else []
+        except Exception as e:
+            print(f"ERROR en count_empleados_por_unidad: {str(e)}")
+            return []
 
     def count_empleados_por_estado(self):
         """Cuenta el número de empleados activos e inactivos."""
-        conn = get_db_read()
-        cursor = conn.cursor()
-        query = """
-            SELECT 
-                CASE WHEN activo = 1 THEN 'Activos' ELSE 'Inactivos' END AS estado,
-                COUNT(id_personal) AS cantidad
-            FROM personal
-            GROUP BY activo;
-        """
-        cursor.execute(query)
-        return [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+        try:
+            conn = get_db_read()
+            cursor = conn.cursor()
+            query = """
+                SELECT 
+                    CASE WHEN activo = 1 THEN 'Activos' ELSE 'Inactivos' END AS estado,
+                    COUNT(id_personal) AS cantidad
+                FROM personal
+                GROUP BY activo;
+            """
+            cursor.execute(query)
+            result = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+            cursor.close()
+            conn.close()
+            return result if result else []
+        except Exception as e:
+            print(f"ERROR en count_empleados_por_estado: {str(e)}")
+            return []
 
     def count_empleados_por_sexo(self):
         """Cuenta el número de empleados por sexo."""
-        conn = get_db_read()
-        cursor = conn.cursor()
-        query = """
-            SELECT 
-                CASE WHEN sexo = 'M' THEN 'Masculino' WHEN sexo = 'F' THEN 'Femenino' ELSE 'No especificado' END AS sexo,
-                COUNT(id_personal) AS cantidad
-            FROM personal
-            GROUP BY sexo;
-        """
-        cursor.execute(query)
-        return [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+        try:
+            conn = get_db_read()
+            cursor = conn.cursor()
+            query = """
+                SELECT 
+                    CASE WHEN sexo = 'M' THEN 'Masculino' WHEN sexo = 'F' THEN 'Femenino' ELSE 'No especificado' END AS sexo,
+                    COUNT(id_personal) AS cantidad
+                FROM personal
+                GROUP BY sexo;
+            """
+            cursor.execute(query)
+            result = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
+            cursor.close()
+            conn.close()
+            return result if result else []
+        except Exception as e:
+            print(f"ERROR en count_empleados_por_sexo: {str(e)}")
+            return []
 
     def get_deleted_documents(self):
         """

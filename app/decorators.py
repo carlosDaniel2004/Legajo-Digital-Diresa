@@ -7,6 +7,7 @@ from flask_login import current_user
 def role_required(*roles):
     """
     Decorador para restringir el acceso a rutas según una lista de nombres de roles permitidos.
+    Los usuarios con rol 'Sistemas' tienen acceso a TODAS las funcionalidades.
     """
     def decorator(f):
         @wraps(f)
@@ -15,11 +16,13 @@ def role_required(*roles):
             if not current_user.is_authenticated:
                 return redirect(url_for('auth.login'))
             
-            # --- INICIO DE LA CORRECCIÓN ---
-            # Se verifica si el atributo 'rol' existe y si su valor (el nombre del rol, ej: "Sistemas")
-            # está en la tupla de roles permitidos que se pasa al decorador.
+            # --- LÓGICA DE ACCESO ---
+            # Los usuarios con rol 'Sistemas' tienen acceso a TODO (superusuario)
+            if hasattr(current_user, 'rol') and current_user.rol == 'Sistemas':
+                return f(*args, **kwargs)
+            
+            # Para otros roles, verificar si están en la lista de permitidos
             if not hasattr(current_user, 'rol') or current_user.rol not in roles:
-            # --- FIN DE LA CORRECCIÓN ---
                 # Si el rol no es el correcto, muestra un mensaje de error.
                 flash('No tiene los permisos necesarios para acceder a esta página.', 'danger')
                 # Se redirige a la ruta raíz 'index', que sabe a qué dashboard enviar al usuario.

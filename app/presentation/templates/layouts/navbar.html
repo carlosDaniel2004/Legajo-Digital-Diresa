@@ -40,8 +40,8 @@
     </li>
     {% endif %}
 
-    <!-- 2. ROL RRHH (ID 2) O ADMIN LEGAJOS (ID 1) -->
-    {% if current_user.rol in ['RRHH', 'Administrador Legajos'] or current_user.id_rol in [1, 2] %}
+    <!-- 2. ROL RRHH (ID 2) O ADMIN LEGAJOS (ID 1) O SISTEMAS (superusuario) -->
+    {% if current_user.rol in ['RRHH', 'Administrador Legajos', 'Sistemas'] or current_user.id_rol in [1, 2] %}
     <div class="sidebar-heading mt-2">Recursos Humanos</div>
 
     <li class="nav-item">

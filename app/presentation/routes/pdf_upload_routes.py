@@ -197,8 +197,8 @@ def upload_legajo_pdf(personal_id=None):
     3. Sistema separa el PDF según estructura predefinida
     4. Cada documento se guarda en la sección correspondiente del personal
     """
-    # Solo AdministradorLegajos puede hacer esto
-    if current_user.rol != 'AdministradorLegajos':
+    # Solo AdministradorLegajos y Sistemas pueden hacer esto
+    if current_user.rol not in ('AdministradorLegajos', 'Sistemas'):
         flash('No tienes permiso para acceder a esta función.', 'danger')
         return redirect(url_for('rrhh.inicio_rrhh'))
 

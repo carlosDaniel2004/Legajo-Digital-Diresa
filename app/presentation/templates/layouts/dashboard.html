@@ -78,7 +78,7 @@
             </a>
             
             {# --- Opciones para Legajos --- #}
-            {% if current_user.rol == 'AdministradorLegajos' %}
+            {% if current_user.rol in ['AdministradorLegajos', 'Sistemas'] %}
             <a href="{{ url_for('legajo.crear_personal') }}" class="list-group-item list-group-item-action border-0 rounded mb-1 px-3 {% if request.endpoint == 'legajo.crear_personal' %}active{% endif %}">
                 <i class="bi bi-folder-plus me-2"></i>Nuevo Legajo
             </a>
@@ -91,7 +91,7 @@
             {% endif %}
 
             {# --- Opciones para RRHH --- #}
-            {% if current_user.rol == 'RRHH' %}
+            {% if current_user.rol in ['RRHH', 'Sistemas'] %}
             <a href="{{ url_for('rrhh.listar_personal') }}" class="list-group-item list-group-item-action border-0 rounded mb-1 px-3 {% if request.endpoint in ['rrhh.listar_personal', 'rrhh.ver_legajo'] %}active{% endif %}">
                 <i class="bi bi-search me-2"></i>Consultar Legajos
             </a>
