@@ -6,6 +6,7 @@ Rutas para carga masiva y separación de PDFs de legajos.
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from flask_login import login_required, current_user
 from app.application.services.pdf_split_service import PdfSplitService
+from app.core.security import IDORProtection
 from werkzeug.utils import secure_filename
 import os
 import logging
@@ -205,6 +206,12 @@ def upload_legajo_pdf(personal_id=None):
     if not personal_id:
         flash('Accede a esta función desde la página del legajo.', 'info')
         return redirect(url_for('legajo.listar_personal'))
+    
+    # SEGURIDAD: Validar IDOR - Verificar que el usuario tenga permiso para acceder a este personal
+    if not IDORProtection.can_access_personal(current_user.id, personal_id, current_user.rol):
+        logger.warning(f"SEGURIDAD: Intento IDOR detectado - Usuario {current_user.id} intenta acceder a personal {personal_id}")
+        flash('No tienes permiso para acceder a este personal.', 'danger')
+        return redirect(url_for('legajo.listar_personal'))
 
     legajo_service = current_app.config.get('LEGAJO_SERVICE')
     personal_repo = current_app.config.get('PERSONAL_REPOSITORY')
@@ -240,10 +247,10 @@ def upload_legajo_pdf(personal_id=None):
 
             logger.info(f"PDF cargado: {temp_path} para personal ID {id_personal}")
 
-            # Obtener la estructura personalizada enviada por el cliente
+            # Obtener la estructura personalizada
             estructura_a_usar = ESTRUCTURA_LEGAJO_DEFAULT
             
-            # Primero intentar obtener la estructura enviada en el formulario
+            # PRIMERO: intentar obtener la estructura enviada en el formulario
             estructura_enviada = request.form.get('estructura_json')
             logger.info(f"Estructura JSON recibida del cliente (raw): {estructura_enviada}")
             
@@ -251,13 +258,60 @@ def upload_legajo_pdf(personal_id=None):
                 try:
                     import json
                     estructura_a_usar = json.loads(estructura_enviada)
-                    logger.info(f"✓ Usando estructura personalizada recibida del cliente para personal {id_personal}")
+                    
+                    # SEGURIDAD: Validar estructura recibida
+                    if not isinstance(estructura_a_usar, dict):
+                        raise ValueError("Estructura debe ser un objeto JSON")
+                    
+                    # Validar cada entrada de la estructura
+                    for doc_key, doc_info in estructura_a_usar.items():
+                        if not isinstance(doc_info, dict):
+                            raise ValueError(f"Entrada {doc_key} debe ser un objeto")
+                        
+                        # Validar campos requeridos
+                        if not all(k in doc_info for k in ['id_seccion', 'tipo_documento', 'pagina_inicio', 'pagina_fin']):
+                            raise ValueError(f"Entrada {doc_key} falta campos requeridos")
+                        
+                        # Validar tipos de datos
+                        if not isinstance(doc_info.get('id_seccion'), int) or doc_info.get('id_seccion') < 1:
+                            raise ValueError(f"id_seccion debe ser un número positivo")
+                        
+                        if not isinstance(doc_info.get('pagina_inicio'), int) or doc_info.get('pagina_inicio') < 1:
+                            raise ValueError(f"pagina_inicio debe ser un número positivo")
+                        
+                        if not isinstance(doc_info.get('pagina_fin'), int) or doc_info.get('pagina_fin') < 1:
+                            raise ValueError(f"pagina_fin debe ser un número positivo")
+                        
+                        if doc_info.get('pagina_fin') < doc_info.get('pagina_inicio'):
+                            raise ValueError(f"pagina_fin debe ser mayor o igual a pagina_inicio")
+                        
+                        # Validar que tipo_documento sea string
+                        if not isinstance(doc_info.get('tipo_documento'), str):
+                            raise ValueError(f"tipo_documento debe ser texto")
+                    
+                    logger.info(f"Usando estructura personalizada recibida del cliente para personal {id_personal}")
                     logger.info(f"Estructura parseada: {estructura_a_usar}")
                 except Exception as e:
-                    logger.warning(f"Error parseando estructura enviada: {e}, usando por defecto")
+                    logger.warning(f"Error validando estructura enviada: {e}, usando por defecto")
+                    estructura_a_usar = ESTRUCTURA_LEGAJO_DEFAULT
+            
+            # SEGUNDA OPCIÓN: Si no vino en el formulario, obtener de la BD
+            if not estructura_a_usar or estructura_a_usar == ESTRUCTURA_LEGAJO_DEFAULT:
+                try:
+                    from app.infrastructure.persistence.estructura_repository import EstructuraRepository
+                    estructura_bd = EstructuraRepository.obtener_estructura_json(id_personal)
+                    if estructura_bd:
+                        estructura_a_usar = estructura_bd
+                        logger.info(f"Estructura personalizada obtenida desde BD para personal {id_personal}")
+                        logger.info(f"Estructura desde BD: {estructura_a_usar}")
+                    else:
+                        estructura_a_usar = ESTRUCTURA_LEGAJO_DEFAULT
+                        logger.info(f"No hay estructura personalizada en BD, usando por defecto para personal {id_personal}")
+                except Exception as e:
+                    logger.warning(f"Error obteniendo estructura de BD: {e}, usando por defecto")
                     estructura_a_usar = ESTRUCTURA_LEGAJO_DEFAULT
             else:
-                logger.info(f"No se recibió estructura personalizada válida, usando por defecto para personal {id_personal}")
+                logger.info(f"Se recibio estructura personalizada valida del cliente para personal {id_personal}")
             
             logger.info(f"Estructura final a usar para separar PDF: {estructura_a_usar}")
 
@@ -292,12 +346,23 @@ def upload_legajo_pdf(personal_id=None):
                     logger.info(f"Documento exitoso: {nombre_doc}, archivo: {archivo_path}")
                     
                     # Determinar el tipo de documento basado en el nombre
-                    # Ej: "01_DNI" -> buscar tipo_documento en la estructura
+                    # Ej: "01_DNI" -> buscar tipo_documento en la estructura personalizada
                     tipo_documento = None
-                    for doc_key, doc_info in ESTRUCTURA_LEGAJO_DEFAULT.items():
+                    id_seccion = None
+                    for doc_key, doc_info in estructura_a_usar.items():
                         if doc_key == nombre_doc:
                             tipo_documento = doc_info.get('tipo_documento', nombre_doc)
+                            id_seccion = doc_info.get('id_seccion')
+                            logger.info(f"Encontrado en estructura personalizada: {nombre_doc} -> tipo: {tipo_documento}, seccion: {id_seccion}")
                             break
+                    
+                    if not tipo_documento:
+                        logger.warning(f"No encontrado en estructura personalizada, buscando en default")
+                        for doc_key, doc_info in ESTRUCTURA_LEGAJO_DEFAULT.items():
+                            if doc_key == nombre_doc:
+                                tipo_documento = doc_info.get('tipo_documento', nombre_doc)
+                                id_seccion = doc_info.get('id_seccion')
+                                break
                     
                     if not tipo_documento:
                         tipo_documento = nombre_doc
@@ -335,7 +400,7 @@ def upload_legajo_pdf(personal_id=None):
                                 logger.debug(f"  Comparando '{tipo_documento.lower()}' con '{tipo_nombre.lower()}'")
                                 if tipo_nombre.lower() == tipo_documento.lower():
                                     id_tipo_documento = tipo_id
-                                    logger.info(f"  ✓ Encontrado: tipo_id={tipo_id}, tipo_nombre={tipo_nombre}")
+                                    logger.info(f"  [FOUND] tipo_id={tipo_id}, tipo_nombre={tipo_nombre}")
                                     break
                             
                             # Si no se encuentra por nombre exacto, intentar por coincidencia parcial
@@ -344,7 +409,7 @@ def upload_legajo_pdf(personal_id=None):
                                 for tipo_id, tipo_nombre in tipos_disponibles:
                                     if tipo_documento.lower() in tipo_nombre.lower() or tipo_nombre.lower() in tipo_documento.lower():
                                         id_tipo_documento = tipo_id
-                                        logger.info(f"  ✓ Encontrado por coincidencia parcial: tipo_id={tipo_id}, tipo_nombre={tipo_nombre}")
+                                        logger.info(f"  [FOUND-PARTIAL] tipo_id={tipo_id}, tipo_nombre={tipo_nombre}")
                                         break
                             
                             # Si aún no hay, usar el primero disponible
@@ -364,10 +429,15 @@ def upload_legajo_pdf(personal_id=None):
                         # IMPORTANTE: Los nombres de campos deben coincidir con lo que espera add_document()
                         form_data = {
                             'id_personal': id_personal,
-                            'id_tipo': id_tipo_documento,  # ✅ CORREGIDO: era id_tipo_documento, debe ser id_tipo
-                            'id_seccion': 1,  # TODO: Obtener la sección correcta basada en el tipo de documento
+                            'id_tipo': id_tipo_documento,
+                            'id_seccion': id_seccion if id_seccion else 1,  # Usar la sección de la estructura personalizada
+                            'nombre_archivo': nombre_archivo,
+                            'fecha_emision': None,
+                            'fecha_vencimiento': None,
                             'descripcion': f'Documento cargado desde PDF: {nombre_doc}',
+                            'hash_archivo': None,
                         }
+                        logger.info(f"Guardando documento con form_data: {form_data}")
                         
                         # Crear un objeto similar a FileStorage para pasar al servicio
                         class FileStreamWrapper:

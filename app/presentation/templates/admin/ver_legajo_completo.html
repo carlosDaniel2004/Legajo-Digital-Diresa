@@ -172,7 +172,7 @@
         <div class="card-body">
             <form id="formCargarPDF" enctype="multipart/form-data" method="POST" action="{{ url_for('pdf.upload_legajo_pdf', personal_id=legajo.personal.id_personal) }}" data-personal-id="{{ legajo.personal.id_personal }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-              <input type="hidden" id="estructura_json" name="estructura_json" value='{"01_DNI": {"id_seccion": 1, "tipo_documento": "DNI", "descripcion": "Cédula de Identidad", "pagina_inicio": 1, "pagina_fin": 1}}'>
+              <input type="hidden" id="estructura_json" name="estructura_json" value='{"01_DNI": {"id_seccion": 1, "tipo_documento": "DNI", "descripcion": "Cédula de Identidad", "pagina_inicio": 1, "pagina_fin": 1}, "02_Curriculum": {"id_seccion": 2, "tipo_documento": "Curriculum", "descripcion": "Currículum Vitae", "pagina_inicio": 2, "pagina_fin": 5}, "03_Titulo_Universitario": {"id_seccion": 3, "tipo_documento": "Titulo", "descripcion": "Título Universitario", "pagina_inicio": 6, "pagina_fin": 6}, "04_Contrato_Laboral": {"id_seccion": 4, "tipo_documento": "Contrato", "descripcion": "Contrato Laboral", "pagina_inicio": 7, "pagina_fin": 12}, "05_Antecedentes_Penales": {"id_seccion": 5, "tipo_documento": "Antecedentes", "descripcion": "Antecedentes Penales", "pagina_inicio": 13, "pagina_fin": 14}, "06_Carnet_Sanitario": {"id_seccion": 6, "tipo_documento": "Carnet", "descripcion": "Carnet Sanitario", "pagina_inicio": 15, "pagina_fin": 15}, "07_Licencias": {"id_seccion": 7, "tipo_documento": "Licencias", "descripcion": "Licencias Profesionales", "pagina_inicio": 16, "pagina_fin": 20}}'>
               
               <!-- Información del Personal -->
               <div class="alert alert-info mb-3">
@@ -230,7 +230,7 @@
               <div class="mb-3">
                 <label for="archivo_pdf" class="form-label"><strong>Selecciona el archivo PDF</strong> <span class="text-danger">*</span></label>
                 <input type="file" class="form-control" id="archivo_pdf" name="archivo_pdf" accept=".pdf" required>
-                <small class="text-muted">Máximo 50 MB. Solo archivos PDF.</small>
+                <small class="text-muted">Máximo 100 MB. Solo archivos PDF.</small>
               </div>
 
               <!-- Botones -->
@@ -278,36 +278,57 @@
     // Capturar el submit del formulario para incluir la estructura actual
     // Se ejecuta cuando esté listo, después de que estructura_pdf.js haya cargado
     function setupFormSubmit() {
+      console.log('[DEBUG] setupFormSubmit() REGISTRANDO evento submit');
       const formCargarPDF = document.getElementById('formCargarPDF');
-      if (formCargarPDF) {
-        formCargarPDF.addEventListener('submit', function(e) {
-          // Antes de enviar, actualizar el campo oculto con la estructura actual
-          const estructuraJson = document.getElementById('estructura_json');
-          
-          if (typeof ESTRUCTURA_DEFAULT === 'undefined') {
-            console.error('ESTRUCTURA_DEFAULT no está definida');
-            alert('Error: Estructura no cargada. Por favor, recarga la página.');
-            e.preventDefault();
-            return;
-          }
-          
-          // Verificar que la estructura no esté vacía
-          const estructuraSerializada = JSON.stringify(ESTRUCTURA_DEFAULT);
-          
-          if (!estructuraSerializada || estructuraSerializada === '{}' || estructuraSerializada === '') {
-            console.error('ESTRUCTURA_DEFAULT está vacía:', ESTRUCTURA_DEFAULT);
-            console.error('Serializada:', estructuraSerializada);
-          }
-          
-          estructuraJson.value = estructuraSerializada;
-          console.log('✓ ESTRUCTURA_DEFAULT ANTES DE ENVIAR:', ESTRUCTURA_DEFAULT);
-          console.log('✓ JSON serializado:', estructuraSerializada);
-          console.log('✓ Valor en input oculto:', estructuraJson.value);
-          console.log('Tamaño:', estructuraSerializada.length, 'bytes');
-        });
-      } else {
-        console.error('formCargarPDF no encontrado');
+      if (!formCargarPDF) {
+        console.error('[DEBUG] formCargarPDF no encontrado');
+        return;
       }
+      
+      // REMOVER listeners anteriores para evitar duplicados
+      const newForm = formCargarPDF.cloneNode(true);
+      formCargarPDF.parentNode.replaceChild(newForm, formCargarPDF);
+      
+      // Registrar nuevo listener
+      newForm.addEventListener('submit', function(e) {
+        console.log('[DEBUG] ===== EVENTO SUBMIT CAPTURADO =====');
+        const estructuraJson = document.getElementById('estructura_json');
+        
+        console.log('[DEBUG] typeof ESTRUCTURA_DEFAULT:', typeof ESTRUCTURA_DEFAULT);
+        if (typeof ESTRUCTURA_DEFAULT === 'undefined') {
+          console.error('[DEBUG] ESTRUCTURA_DEFAULT no está definida');
+          alert('Error: Estructura no cargada. Por favor, recarga la página.');
+          e.preventDefault();
+          return;
+        }
+        
+        // SIEMPRE serializar ESTRUCTURA_DEFAULT actual, no confiar en valor previo
+        const estructuraSerializada = JSON.stringify(ESTRUCTURA_DEFAULT);
+        
+        console.log('[DEBUG] Estado de ESTRUCTURA_DEFAULT:');
+        console.log('[DEBUG]   Elementos:', Object.keys(ESTRUCTURA_DEFAULT));
+        console.log('[DEBUG]   JSON completo:', estructuraSerializada);
+        console.log('[DEBUG]   Tamaño:', estructuraSerializada.length, 'bytes');
+        
+        // Mostrar cada sección y su id_seccion
+        Object.entries(ESTRUCTURA_DEFAULT).forEach(([key, val]) => {
+          console.log(`[DEBUG]   ${key}: id_seccion=${val.id_seccion}`);
+        });
+        
+        if (!estructuraSerializada || estructuraSerializada === '{}') {
+          console.error('[DEBUG] ESTRUCTURA_DEFAULT está vacía o inválida');
+          alert('Error: La estructura está vacía');
+          e.preventDefault();
+          return;
+        }
+        
+        // ACTUALIZAR el campo JUSTO ANTES de enviar
+        estructuraJson.value = estructuraSerializada;
+        console.log('[DEBUG] Campo estructura_json ACTUALIZADO JUSTO AHORA');
+        console.log('[DEBUG] Valor final a enviar:', estructuraJson.value.substring(0, 100) + '...');
+        console.log('[DEBUG] ===== ENVIANDO FORMULARIO AHORA =====');
+        // Permitir que el formulario se envíe normalmente
+      });
     }
     
     // Ejecutar después de que todo se haya cargado
