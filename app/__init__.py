@@ -62,7 +62,14 @@ def configure_logging(app):
         if not os.path.exists('logs'):
             os.mkdir('logs')
         
-        file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
+        # Usar delay=True para evitar problemas en Windows con archivo bloqueado
+        # Aumentar maxBytes a 50MB para reducir rotaciones frecuentes
+        file_handler = RotatingFileHandler(
+            'logs/app.log', 
+            maxBytes=50*1024*1024,  # 50 MB
+            backupCount=5,
+            delay=True  # No crear el archivo hasta el primer log
+        )
         
         file_handler.setFormatter(logging.Formatter(
             '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
@@ -94,45 +101,41 @@ def create_app():
     # Seguridad: Inicializar Limiter y Talisman con la app
     limiter.init_app(app)
     
-    # Se permite 'unsafe-inline' en estilos para compatibilidad con SweetAlert2
     # Configuración de la Política de Seguridad de Contenido (CSP)
-    # CORRECCIÓN: Se eliminan los hashes de 'style-src' para que 'unsafe-inline' funcione correctamente.
+    # Permite CDNs necesarios y estilos en línea para compatibilidad con SweetAlert2 y FontAwesome
     csp = {
         'default-src': "'self'",
         'script-src': [
             "'self'",
+            "'unsafe-inline'",  # Permitir inline scripts con nonce o unsafe-inline como fallback
             'https://cdn.jsdelivr.net',
-            # Mantén los hashes de SCRIPTS (aquí no estorban porque no usas unsafe-inline para scripts)
-            "'sha256-SPTyZWPTeFjTbKHjAIiuDI3sMWfD09TRSvdLnxR9P18='",
-            "'sha256-o9r2rou2atPIEqtS7L6iNiMf3jmm9DSP9D4+QBcsjTI='"
         ],
         'style-src': [
             "'self'",
-            "'unsafe-inline'", # Permite SweetAlert y otros estilos en línea
-            'https://cdn.jsdelivr.net'
-            # NOTA: He borrado los hashes de aquí abajo porque bloqueaban a 'unsafe-inline'
+            "'unsafe-inline'",  # Necesario para SweetAlert2 y otros estilos dinámicos
+            'https://cdn.jsdelivr.net',
+            'https://cdnjs.cloudflare.com',  # FontAwesome desde CloudFlare
         ],
-        'font-src': 'https://cdn.jsdelivr.net',
+        'font-src': [
+            'https://cdn.jsdelivr.net',
+            'https://cdnjs.cloudflare.com',  # FontAwesome desde CloudFlare
+        ],
         'img-src': [
             "'self'",
-            'data:'
+            'data:',
         ],
         'connect-src': [
             "'self'",
-            'https://cdn.jsdelivr.net'
+            'https://cdn.jsdelivr.net',
         ]
     }
 
-
-
-    
     talisman.init_app(
         app, 
         content_security_policy=csp,
-        # Silencia el aviso de 'browsing-topics'
-        permissions_policy={'browsing-topics': '()'},
         force_https=False,  # Desactivar HTTPS para desarrollo
-        content_security_policy_nonce_in=['script-src']
+        content_security_policy_nonce_in=['script-src'],
+        permissions_policy={},  # Ignorar browsing-topics de forma segura
     )
 
     # --- FILTRO DE PLANTILLA PARA ZONA HORARIA ---
@@ -147,6 +150,25 @@ def create_app():
         # Se restan 5 horas para ajustar de UTC a America/Lima.
         local_dt = utc_dt - timedelta(hours=5)
         return local_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+    # --- FUNCIÓN PARA OBTENER EL NONCE DE CSP EN TEMPLATES ---
+    @app.context_processor
+    def inject_csp_nonce():
+        """Inyecta la función csp_nonce() en todos los templates."""
+        def csp_nonce():
+            from flask import g, request
+            
+            # Talisman almacena el nonce en g.csp_nonce
+            nonce = g.get('csp_nonce', '')
+            
+            # Si no está en g, intenta obtenerlo de la respuesta headers
+            if not nonce and hasattr(request, 'environ'):
+                # Obtener del contexto local de Talisman
+                nonce = g.get('csp_nonce', '')
+            
+            return nonce
+        
+        return {'csp_nonce': csp_nonce}
 
     with app.app_context():
         # --- Inyección de Dependencias (sin cambios) ---
@@ -178,6 +200,7 @@ def create_app():
         from .presentation.routes.rrhh_routes import rrhh_bp
         from .presentation.routes.error_routes import error_bp
         from .presentation.routes.personal_routes import personal_bp # <-- Nuevo blueprint para empleados
+        from .presentation.routes.pdf_upload_routes import pdf_bp # <-- Nuevo blueprint para PDF
         # Registrar Blueprints
         app.register_blueprint(auth_bp)
         app.register_blueprint(legajo_bp)
@@ -185,6 +208,7 @@ def create_app():
         app.register_blueprint(rrhh_bp)
         app.register_blueprint(error_bp)
         app.register_blueprint(personal_bp) # <-- Registrar blueprint de empleados
+        app.register_blueprint(pdf_bp) # <-- Registrar blueprint de PDF
 
         @app.route('/')
         def index():

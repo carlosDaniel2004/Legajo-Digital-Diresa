@@ -55,14 +55,14 @@
                                     {# Formularios actualizados a legajo.procesar_solicitud #}
                                     <form action="{{ url_for('legajo.procesar_solicitud', solicitud_id=sol.id_solicitud, accion='aprobar') }}" method="POST" class="d-inline">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="btn btn-success btn-sm me-1" onclick="return confirm('¿Está seguro de APROBAR este cambio? El documento anterior será reemplazado permanentemente.');" title="Aprobar Cambio">
+                                        <button type="submit" class="btn btn-success btn-sm me-1" data-confirm="¿Está seguro de APROBAR este cambio? El documento anterior será reemplazado permanentemente." title="Aprobar Cambio">
                                             <i class="bi bi-check-lg"></i>
                                         </button>
                                     </form>
                                     
                                     <form action="{{ url_for('legajo.procesar_solicitud', solicitud_id=sol.id_solicitud, accion='rechazar') }}" method="POST" class="d-inline">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Rechazar esta solicitud?');" title="Rechazar Cambio">
+                                        <button type="submit" class="btn btn-danger btn-sm" data-confirm="¿Rechazar esta solicitud?" title="Rechazar Cambio">
                                             <i class="bi bi-x-lg"></i>
                                         </button>
                                     </form>

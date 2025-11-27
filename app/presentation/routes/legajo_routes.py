@@ -72,6 +72,15 @@ def api_tipos_documento_por_seccion(id_seccion):
         return jsonify({"error": "No se pudieron cargar los datos"}), 500
 
 
+# --- API para obtener todas las secciones ---
+@legajo_bp.route('/api/secciones', methods=['GET'])
+@login_required
+def get_secciones():
+    legajo_service = current_app.config['LEGAJO_SERVICE']
+    secciones = legajo_service.get_secciones_for_select()
+    # Formatea la respuesta para que sea fácil de consumir por JavaScript
+    return jsonify([{'id': id, 'nombre': nombre} for id, nombre in secciones])
+
 # --- NUEVA RUTA API para obtener tipos de documento por sección ---
 @legajo_bp.route('/api/tipos_documento/por_seccion/<int:seccion_id>', methods=['GET'])
 @login_required

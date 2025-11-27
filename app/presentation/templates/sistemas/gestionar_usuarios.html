@@ -69,7 +69,7 @@
                             <a href="{{ url_for('sistemas.editar_usuario', user_id=user.id) }}" class="btn btn-sm btn-warning">Editar</a>
                             <form method="POST" action="{{ url_for('sistemas.reset_password', user_id=user.id) }}" style="display:inline-block;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Está seguro de resetear la contraseña de {{ user.username }}?')">Resetear</button>
+                                <button type="submit" class="btn btn-sm btn-danger" data-confirm="¿Está seguro de resetear la contraseña de {{ user.username }}?">Resetear</button>
                             </form>
                         </td>
                     </tr>

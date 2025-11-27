@@ -73,7 +73,12 @@
             <h1 class="h3 mb-1">Legajo Completo de: {{ legajo.personal.nombres }} {{ legajo.personal.apellidos }}</h1>
             <span class="badge bg-secondary">DNI: {{ legajo.personal.dni }}</span>
         </div>
-        <div>
+        <div class="d-flex gap-2">
+            {% if current_user.rol == 'AdministradorLegajos' %}
+                <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#cargarPDFModal">
+                    <i class="bi bi-file-pdf-fill me-1"></i> Cargar PDF
+                </button>
+            {% endif %}
             <a href="{{ url_for('legajo.listar_personal') }}" class="btn btn-secondary"><i class="bi bi-arrow-left-circle me-1"></i> Volver a la Lista</a>
         </div>
     </div>
@@ -151,10 +156,92 @@
                     Archivos permitidos: PDF, PNG, JPG, DOCX, XLSX. Tamaño máximo: 16 MB.
                 </div>
                 <div class="mt-3">
-                    <button type="submit" class="btn btn-success" onclick="this.disabled=true; this.innerHTML='<span class=\'spinner-border spinner-border-sm\'></span> Subiendo...'; this.form.submit();">
+                    <button type="submit" class="btn btn-success" data-disable-on-submit>
                         <i class="bi bi-plus-lg me-1"></i> Añadir Documento
                     </button>
                 </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CARGAR PDF COMPLETO DEL LEGAJO -->
+    <div class="card shadow-sm mt-4">
+        <div class="card-header fw-bold text-white bg-warning">
+            <i class="bi bi-file-pdf-fill me-2"></i>Cargar PDF Completo del Legajo
+        </div>
+        <div class="card-body">
+            <form id="formCargarPDF" enctype="multipart/form-data" method="POST" action="{{ url_for('pdf.upload_legajo_pdf', personal_id=legajo.personal.id_personal) }}" data-personal-id="{{ legajo.personal.id_personal }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <input type="hidden" id="estructura_json" name="estructura_json" value='{"01_DNI": {"id_seccion": 1, "tipo_documento": "DNI", "descripcion": "Cédula de Identidad", "pagina_inicio": 1, "pagina_fin": 1}}'>
+              
+              <!-- Información del Personal -->
+              <div class="alert alert-info mb-3">
+                <strong><i class="bi bi-person-fill me-2"></i>Personal:</strong>
+                {{ legajo.personal.apellidos }}, {{ legajo.personal.nombres }}
+                <br/>
+                <strong>DNI:</strong> {{ legajo.personal.dni }}
+              </div>
+
+              <!-- Estructura del Legajo -->
+              <div class="mb-3">
+                <label class="form-label"><strong>Estructura del Legajo</strong></label>
+                
+                <!-- Vista Actual -->
+                <div class="table-responsive mb-3">
+                  <table class="table table-sm table-hover">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Sección</th>
+                        <th>Tipo Documento</th>
+                        <th>Descripción</th>
+                        <th>Páginas</th>
+                      </tr>
+                    </thead>
+                    <tbody id="estructuraBody">
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Botón para mostrar/ocultar edición -->
+                <button type="button" class="btn btn-sm btn-outline-primary mb-3" id="btnPersonalizar" data-action="show">
+                  <i class="bi bi-pencil me-1"></i>Personalizar Estructura
+                </button>
+
+                <!-- Edición de Estructura (oculta por defecto) -->
+                <div id="editarEstructura" class="d-none border rounded p-3 mb-3 bg-light">
+                  <p class="text-muted small"><i class="bi bi-info-circle"></i> Modifica la estructura según sea necesario para este personal</p>
+                  <div id="formularioEstructura">
+                    <!-- Se rellenará dinámicamente -->
+                  </div>
+                  <div class="d-flex gap-2 justify-content-end mt-3">
+                    <button type="button" class="btn btn-sm btn-secondary" id="btnCancelarPersonalizacion">
+                      Cancelar
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary" id="btnGuardarPersonalizacion">
+                      <i class="bi bi-check-lg me-1"></i>Guardar Cambios
+                    </button>
+                  </div>
+                </div>
+
+                <small class="text-muted d-block mt-2">El PDF será dividido automáticamente según esta estructura</small>
+              </div>
+
+              <!-- Selector de Archivo -->
+              <div class="mb-3">
+                <label for="archivo_pdf" class="form-label"><strong>Selecciona el archivo PDF</strong> <span class="text-danger">*</span></label>
+                <input type="file" class="form-control" id="archivo_pdf" name="archivo_pdf" accept=".pdf" required>
+                <small class="text-muted">Máximo 50 MB. Solo archivos PDF.</small>
+              </div>
+
+              <!-- Botones -->
+              <div class="d-flex gap-2 justify-content-end">
+                <button type="reset" class="btn btn-secondary">
+                  <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar
+                </button>
+                <button type="submit" class="btn btn-warning">
+                  <i class="bi bi-upload me-1"></i>Cargar PDF
+                </button>
+              </div>
             </form>
         </div>
     </div>
@@ -186,5 +273,48 @@
 
 {% block scripts %}
     {{ super() }}
-    {# Toda la lógica de JavaScript ha sido movida a /static/js/main.js para cumplir con la CSP #}
+    <script src="{{ url_for('static', filename='js/estructura_pdf.js') }}"></script>
+    <script nonce="{{ csp_nonce() }}">
+    // Capturar el submit del formulario para incluir la estructura actual
+    // Se ejecuta cuando esté listo, después de que estructura_pdf.js haya cargado
+    function setupFormSubmit() {
+      const formCargarPDF = document.getElementById('formCargarPDF');
+      if (formCargarPDF) {
+        formCargarPDF.addEventListener('submit', function(e) {
+          // Antes de enviar, actualizar el campo oculto con la estructura actual
+          const estructuraJson = document.getElementById('estructura_json');
+          
+          if (typeof ESTRUCTURA_DEFAULT === 'undefined') {
+            console.error('ESTRUCTURA_DEFAULT no está definida');
+            alert('Error: Estructura no cargada. Por favor, recarga la página.');
+            e.preventDefault();
+            return;
+          }
+          
+          // Verificar que la estructura no esté vacía
+          const estructuraSerializada = JSON.stringify(ESTRUCTURA_DEFAULT);
+          
+          if (!estructuraSerializada || estructuraSerializada === '{}' || estructuraSerializada === '') {
+            console.error('ESTRUCTURA_DEFAULT está vacía:', ESTRUCTURA_DEFAULT);
+            console.error('Serializada:', estructuraSerializada);
+          }
+          
+          estructuraJson.value = estructuraSerializada;
+          console.log('✓ ESTRUCTURA_DEFAULT ANTES DE ENVIAR:', ESTRUCTURA_DEFAULT);
+          console.log('✓ JSON serializado:', estructuraSerializada);
+          console.log('✓ Valor en input oculto:', estructuraJson.value);
+          console.log('Tamaño:', estructuraSerializada.length, 'bytes');
+        });
+      } else {
+        console.error('formCargarPDF no encontrado');
+      }
+    }
+    
+    // Ejecutar después de que todo se haya cargado
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupFormSubmit);
+    } else {
+      setupFormSubmit();
+    }
+    </script>
 {% endblock %}

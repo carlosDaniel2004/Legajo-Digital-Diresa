@@ -110,7 +110,7 @@
                                                 <!-- TOKEN CSRF OBLIGATORIO -->
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 
-                                                <button type="submit" class="btn btn-success text-white" onclick="return confirm('¿Restaurar este documento?');" title="Restaurar">
+                                                <button type="submit" class="btn btn-success text-white" data-confirm="¿Restaurar este documento?" title="Restaurar">
                                                     <i class="bi bi-arrow-counterclockwise"></i>
                                                 </button>
                                             </form>
@@ -123,7 +123,7 @@
                                                 <!-- TOKEN CSRF OBLIGATORIO -->
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 
-                                                <button type="submit" class="btn btn-danger" onclick="return confirm('¡ADVERTENCIA! Esto borrará el archivo permanentemente.\n\n¿Continuar?');" title="Eliminar Definitivamente">
+                                                <button type="submit" class="btn btn-danger" data-confirm="¡ADVERTENCIA! Esto borrará el archivo permanentemente.\n\n¿Continuar?" title="Eliminar Definitivamente">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>

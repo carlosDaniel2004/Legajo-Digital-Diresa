@@ -216,7 +216,7 @@
 
                         <!-- Botones -->
                         <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                            <button style="padding: 0.8rem 1.5rem; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s;" type="button" onclick="document.getElementById('email-form').style.display='none'">
+                            <button style="padding: 0.8rem 1.5rem; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s;" type="button" data-cancel-email-form>
                                 <i class="bi bi-x-circle me-2"></i>Cancelar
                             </button>
                             <button style="padding: 0.8rem 1.5rem; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s;" type="submit">
@@ -257,7 +257,7 @@
                                     type="password" 
                                     placeholder="Ingresa tu contraseña actual"
                                     required>
-                                <button style="padding: 0.8rem 1rem; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; transition: all 0.3s;" type="button" onclick="togglePasswordVisibility('password_actual')">
+                                <button style="padding: 0.8rem 1rem; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer; transition: all 0.3s;" type="button" data-toggle-password="password_actual">
                                     <i class="bi bi-eye"></i>
                                 </button>
                             </div>
@@ -284,7 +284,7 @@
                                         placeholder="Mínimo 8 caracteres"
                                         minlength="8"
                                         required>
-                                    <button style="padding: 0.8rem 1rem; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer;" type="button" onclick="togglePasswordVisibility('password_nueva')">
+                                    <button style="padding: 0.8rem 1rem; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer;" type="button" data-toggle-password="password_nueva">
                                         <i class="bi bi-eye"></i>
                                     </button>
                                 </div>
@@ -306,7 +306,7 @@
                                         placeholder="Repite la nueva contraseña"
                                         minlength="8"
                                         required>
-                                    <button style="padding: 0.8rem 1rem; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer;" type="button" onclick="togglePasswordVisibility('password_confirmacion')">
+                                    <button style="padding: 0.8rem 1rem; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer;" type="button" data-toggle-password="password_confirmacion">
                                         <i class="bi bi-eye"></i>
                                     </button>
                                 </div>
@@ -332,7 +332,7 @@
 
                         <!-- Botones de Acción -->
                         <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                            <button style="padding: 0.8rem 1.5rem; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" type="button" onclick="window.history.back()">
+                            <button style="padding: 0.8rem 1.5rem; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" type="button" data-go-back>
                                 <i class="bi bi-arrow-left me-2"></i>Cancelar
                             </button>
                             <button style="padding: 0.8rem 1.5rem; background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" type="submit">
@@ -375,7 +375,7 @@
                                 type="file"
                                 accept=".jpg,.jpeg,.png,.pdf"
                                 required>
-                            <button style="padding: 0.8rem 1.5rem; background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" type="button" onclick="document.getElementById('foto_carnet').click()">
+                            <button style="padding: 0.8rem 1.5rem; background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" type="button" data-trigger-file-input="foto_carnet">
                                 <i class="bi bi-folder-open me-2"></i>Examinar Archivo
                             </button>
                             <small style="color: #6b7280; display: block; margin-top: 0.75rem;">
@@ -398,7 +398,7 @@
 
                         <!-- Botones de Acción -->
                         <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                            <button style="padding: 0.8rem 1.5rem; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" type="button" onclick="window.history.back()">
+                            <button style="padding: 0.8rem 1.5rem; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" type="button" data-go-back>
                                 <i class="bi bi-arrow-left me-2"></i>Cancelar
                             </button>
                             <button style="padding: 0.8rem 1.5rem; background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" type="submit">
@@ -412,7 +412,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
     function togglePasswordVisibility(fieldId) {
         const field = document.getElementById(fieldId);
         const button = event.currentTarget;

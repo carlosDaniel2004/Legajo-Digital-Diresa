@@ -36,7 +36,7 @@
                             <label class="form-label"><strong>Nombre de Usuario:</strong></label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="username" value="{{ usuario_info.username }}" readonly>
-                                <button class="btn btn-outline-secondary" type="button" onclick="copiarAlPortapapeles('username')">
+                                <button class="btn btn-outline-secondary" type="button" data-copy-to-clipboard="username">
                                     <i class="bi bi-files me-1"></i>Copiar
                                 </button>
                             </div>
@@ -45,10 +45,10 @@
                             <label class="form-label"><strong>Contraseña Temporal:</strong></label>
                             <div class="input-group">
                                 <input type="password" class="form-control" id="password" value="{{ usuario_info.password }}" readonly>
-                                <button class="btn btn-outline-secondary" type="button" onclick="mostrarOcultarPassword()">
+                                <button class="btn btn-outline-secondary" type="button" data-toggle-password="password">
                                     <i class="bi bi-eye" id="icon-ojo"></i>
                                 </button>
-                                <button class="btn btn-outline-secondary" type="button" onclick="copiarAlPortapapeles('password')">
+                                <button class="btn btn-outline-secondary" type="button" data-copy-to-clipboard="password">
                                     <i class="bi bi-files me-1"></i>Copiar
                                 </button>
                             </div>
@@ -105,7 +105,7 @@
     }
 </style>
 
-<script>
+<script nonce="{{ csp_nonce() }}">
 function copiarAlPortapapeles(elementId) {
     const elemento = document.getElementById(elementId);
     elemento.select();

@@ -18,7 +18,7 @@
                     {# Aseguramos el token CSRF #}
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     
-                    <button type="submit" class="btn btn-lg btn-danger w-100" onclick="this.disabled=true; this.innerText='Iniciando...'; this.form.submit();">
+                    <button type="submit" class="btn btn-lg btn-danger w-100" data-disable-on-submit>
                         <i class="bi bi-cloud-upload"></i> Ejecutar Backup Ahora
                     </button>
                 </form>

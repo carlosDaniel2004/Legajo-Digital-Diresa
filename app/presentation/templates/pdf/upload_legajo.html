@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Cargar Legajo PDF - DIRESA{% endblock %}
+
+{% block body_content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-file-pdf"></i> Cargar Legajo Completo (PDF)
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Carga un archivo PDF con todo el legajo. El sistema lo separará automáticamente
+                        en documentos individuales (DNI, Contrato, Títulos, etc.).
+                    </p>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    <i class="bi bi-exclamation-circle"></i> {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="form-group mb-3">
+                            <label for="pdf_file" class="form-label">
+                                <strong>Seleccionar PDF del Legajo</strong>
+                            </label>
+                            <input type="file" class="form-control" id="pdf_file" name="pdf_file" 
+                                   accept=".pdf" required>
+                            <small class="text-muted d-block mt-2">
+                                El archivo debe estar en formato PDF. Máximo 50 MB.
+                            </small>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="id_personal" class="form-label">
+                                <strong>Seleccionar Personal</strong>
+                            </label>
+                            <select class="form-select" id="id_personal" name="id_personal" required>
+                                <option value="">-- Cargando personal del sistema... --</option>
+                            </select>
+                            <small class="text-muted d-block mt-2">
+                                Se mostrarán todos los empleados registrados en el sistema.
+                            </small>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <strong><i class="bi bi-info-circle"></i> Estructura esperada del PDF:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Página 1: DNI</li>
+                                <li>Páginas 2-5: Curriculum Vitae</li>
+                                <li>Página 6: Título Universitario</li>
+                                <li>Páginas 7-12: Contrato Laboral</li>
+                                <li>Páginas 13-14: Antecedentes Penales</li>
+                                <li>Página 15: Carnet Sanitario</li>
+                                <li>Páginas 16-20: Licencias</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('rrhh.inicio_rrhh') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="btn_procesar">
+                                <i class="bi bi-upload"></i> Procesar PDF
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading indicator -->
+<div id="loading_modal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border mb-3" role="status">
+                    <span class="visually-hidden">Procesando...</span>
+                </div>
+                <p><strong>Procesando PDF, por favor espere...</strong></p>
+                <p class="text-muted">El sistema está separando el documento en sus componentes.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script nonce="{{ csp_nonce() }}">
+document.addEventListener('DOMContentLoaded', function() {
+    // Cargar lista de personal
+    cargarListaPersonal();
+    
+    // Manejar envío del formulario
+    document.querySelector('form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        procesar_pdf();
+    });
+});
+
+function cargarListaPersonal() {
+    // Obtener lista de personal desde el servidor
+    fetch('/pdf/api/personal-list')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('id_personal');
+            select.innerHTML = '<option value="">-- Selecciona un personal --</option>';
+            
+            if (data && data.length > 0) {
+                data.forEach(person => {
+                    const option = document.createElement('option');
+                    option.value = person.id;
+                    option.textContent = `${person.nombre} (DNI: ${person.dni})`;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">No hay personal disponible</option>';
+                console.warn('No hay personal en el sistema');
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando personal:', error);
+            const select = document.getElementById('id_personal');
+            select.innerHTML = '<option value="">Error al cargar personal</option>';
+            alert('Error cargando la lista de personal. Por favor recargue la página.');
+        });
+}
+
+function procesar_pdf() {
+    const id_personal = document.getElementById('id_personal').value;
+    const archivo = document.getElementById('pdf_file').files[0];
+    
+    if (!id_personal) {
+        alert('Por favor seleccione un personal');
+        return;
+    }
+    
+    if (!archivo) {
+        alert('Por favor seleccione un archivo PDF');
+        return;
+    }
+    
+    if (archivo.type !== 'application/pdf') {
+        alert('El archivo debe ser un PDF válido');
+        return;
+    }
+    
+    if (archivo.size > 50 * 1024 * 1024) {  // 50 MB
+        alert('El archivo es demasiado grande. Máximo 50 MB.');
+        return;
+    }
+    
+    // Mostrar indicador de carga
+    const loadingModal = new bootstrap.Modal(document.getElementById('loading_modal'));
+    loadingModal.show();
+    
+    document.getElementById('btn_procesar').disabled = true;
+    
+    // Usar el formulario normal para enviar (no AJAX, para mantener compatibilidad)
+    document.querySelector('form').submit();
+}
+</script>
+{% endblock %}
