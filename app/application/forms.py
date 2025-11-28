@@ -78,6 +78,15 @@ def validate_telefono(form, field):
 
 
 class LoginForm(FlaskForm):
+    # 1. Agregamos el campo de selección de Rol
+    role = SelectField('Tipo de Usuario', choices=[
+        ('', '-- Seleccionar Rol --'),
+        ('Sistemas', 'Sistemas'),
+        ('RRHH', 'Recursos Humanos'),
+        ('AdministradorLegajos', 'Administrador de Legajos'),
+        ('Personal', 'Personal / Empleado')
+    ], validators=[DataRequired(message="Debe seleccionar un rol.")])
+
     username = StringField('Usuario', validators=[DataRequired()])
     password = PasswordField('Contraseña', validators=[DataRequired()])
     remember_me = BooleanField('Mantenerme conectado')

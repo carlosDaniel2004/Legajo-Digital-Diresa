@@ -27,6 +27,14 @@
         <form method="post" novalidate>
             {{ form.hidden_tag() }}
             
+            <form method="post" novalidate>
+            {{ form.hidden_tag() }}
+            
+            <div class="form-floating mb-3">
+                {{ form.role(class="form-select", placeholder="Seleccionar Rol") }}
+                {{ form.role.label }}
+            </div>
+
             <div class="form-floating">
                 {{ form.username(class="form-control", placeholder="Usuario") }}
                 {{ form.username.label }}
@@ -35,13 +43,6 @@
             <div class="form-floating mt-3">
                 {{ form.password(class="form-control", placeholder="Contraseña") }}
                 {{ form.password.label }}
-            </div>
-
-            <div class="d-flex justify-content-between align-items-center mt-3">
-                <div class="form-check">
-                    {{ form.remember_me(class="form-check-input") }}
-                    {{ form.remember_me.label(class="form-check-label") }}
-                </div>
             </div>
             
             <div class="d-grid mt-4">

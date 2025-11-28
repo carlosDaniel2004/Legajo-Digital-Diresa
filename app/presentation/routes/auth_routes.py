@@ -13,15 +13,16 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 # Seguridad: Aplicar un límite de intentos para prevenir ataques de fuerza bruta.
-@limiter.limit("20 per minute")  # Aumentado de 10 a 20 para desarrollo
+@limiter.limit("20 per minute")
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('index')) # Asumimos que 'index' maneja la redirección post-login si ya está autenticado
+        return redirect(url_for('index'))
     
     form = LoginForm()
     if form.validate_on_submit():
         try:
             username = form.username.data
+            selected_role = form.role.data  # <--- 1. Capturamos el rol seleccionado del formulario
             
             # ✅ SEGURIDAD: Verificar si cuenta está bloqueada
             is_locked, minutos_restantes = AccountLockoutManager.is_account_locked(username)
@@ -39,8 +40,20 @@ def login():
                 flash(f'⚠️ {result[1]}', 'warning')
                 return redirect(url_for('auth.login'))
             
-            # Si result es un ID de usuario, proceder con 2FA
+            # Si result es un ID de usuario (login exitoso de credenciales)
             if result:
+                # <--- 2. VALIDACIÓN DE ROL (NUEVO) --->
+                # Obtenemos el usuario temporalmente para verificar que coincida con el rol seleccionado
+                user_temp = usuario_service.get_user_by_id(result)
+                
+                if user_temp and user_temp.rol != selected_role:
+                    # Si el rol en base de datos no coincide con el seleccionado
+                    current_app.logger.warning(f"SEGURIDAD: Intento de login con rol incorrecto. Usuario: {username}, Rol Real: {user_temp.rol}, Rol Seleccionado: {selected_role}")
+                    flash(f'El usuario ingresado no pertenece al rol "{selected_role}".', 'warning')
+                    return redirect(url_for('auth.login'))
+                
+                # <--- FIN VALIDACIÓN DE ROL --->
+
                 # ✅ SEGURIDAD: Reiniciar contador en login exitoso
                 AccountLockoutManager.reset_failed_attempts(username)
                 
