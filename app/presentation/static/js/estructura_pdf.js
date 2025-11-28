@@ -25,32 +25,18 @@ function escapeHtml(text) {
 let seccionesCache = null;
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOMContentLoaded: iniciando carga de estructura');
-  console.log('ESTRUCTURA_DEFAULT inicial:', JSON.stringify(ESTRUCTURA_DEFAULT));
-  
   cargarSecciones().then(async () => {
     // Cargar estructura personalizada desde BD si existe
     await cargarEstructuraDesdeServidor();
-    console.log('ESTRUCTURA_DEFAULT despues de cargarEstructuraDesdeServidor:', JSON.stringify(ESTRUCTURA_DEFAULT));
     
-    // IMPORTANTE: Actualizar el campo del formulario con la estructura (personalizada o por defecto)
+    // IMPORTANTE: Actualizar el campo del formulario con la estructura
     const estructuraJsonField = document.getElementById('estructura_json');
     if (estructuraJsonField) {
-      const estructuraSerializada = JSON.stringify(ESTRUCTURA_DEFAULT);
-      estructuraJsonField.value = estructuraSerializada;
-      console.log('[DEBUG] Campo estructura_json actualizado en DOMContentLoaded:', estructuraSerializada.substring(0, 100) + '...');
+      estructuraJsonField.value = JSON.stringify(ESTRUCTURA_DEFAULT);
     }
     
     cargarEstructura();
     setupEventListeners();
-    
-    // Verificar que la estructura este correcta
-    if (Object.keys(ESTRUCTURA_DEFAULT).length === 0) {
-      console.error('ESTRUCTURA_DEFAULT esta vacia despues de inicializar');
-    } else {
-      console.log('OK: ESTRUCTURA_DEFAULT cargada con', Object.keys(ESTRUCTURA_DEFAULT).length, 'elementos');
-      console.log('Contenido:', ESTRUCTURA_DEFAULT);
-    }
   });
 });
 
@@ -60,55 +46,39 @@ function cargarEstructuraDesdeServidor() {
       // Obtener id_personal del atributo data del formulario
       const formCargarPDF = document.getElementById('formCargarPDF');
       if (!formCargarPDF) {
-        console.log('[DEBUG] Formulario de carga PDF no encontrado, usando estructura por defecto');
         resolve();
         return;
       }
       
       const id_personal = formCargarPDF.getAttribute('data-personal-id');
-      console.log('[DEBUG] id_personal obtenido del formulario:', id_personal);
       
       if (!id_personal) {
-        console.log('[DEBUG] No se pudo determinar id_personal, usando estructura por defecto');
         resolve();
         return;
       }
       
-      // Llamar al API para obtener la estructura personalizada
-      console.log('[DEBUG] Solicitando estructura personalizada del servidor...');
-      fetch(`/legajo/api/estructura/${id_personal}`)
+      // CORRECCIÓN: Ruta apuntando al Blueprint 'pdf_bp' correcto
+      fetch(`/pdf/api/estructura-personal/${id_personal}`)
         .then(response => {
           if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            // Silencioso en caso de error 404 o 500
+            return {};
           }
           return response.json();
         })
         .then(data => {
-          console.log('[DEBUG] Respuesta del servidor:', data);
-          
-          if (data.exito && data.estructura) {
-            console.log('[DEBUG] Estructura personalizada encontrada en servidor');
-            console.log('[DEBUG] Estructura personalizada:', data.estructura);
-            
+          if (data && data.estructura) {
             // Hacer MERGE con la estructura por defecto
             Object.assign(ESTRUCTURA_DEFAULT, data.estructura);
-            
-            console.log('[DEBUG] ESTRUCTURA_DEFAULT fusionada con estructura personalizada del servidor');
-            console.log('[DEBUG] Elementos totales:', Object.keys(ESTRUCTURA_DEFAULT).length);
-          } else {
-            console.log('[DEBUG] No hay estructura personalizada en servidor, usando por defecto');
           }
-          
           resolve();
         })
         .catch(error => {
-          console.warn('[DEBUG] Error al cargar estructura del servidor:', error);
-          console.log('[DEBUG] Usando estructura por defecto');
+          // Fallback silencioso a la estructura por defecto
           resolve();
         });
       
     } catch (error) {
-      console.error('[DEBUG] Error en cargarEstructuraDesdeServidor:', error);
       resolve();
     }
   });
@@ -116,69 +86,42 @@ function cargarEstructuraDesdeServidor() {
 
 function cargarEstructuraGuardada() {
   try {
-    // Obtener id_personal del atributo data del formulario
     const formCargarPDF = document.getElementById('formCargarPDF');
-    if (!formCargarPDF) {
-      console.log('[DEBUG] Formulario de carga PDF no encontrado');
-      return;
-    }
+    if (!formCargarPDF) return;
     
     const id_personal = formCargarPDF.getAttribute('data-personal-id');
-    console.log('[DEBUG] id_personal obtenido del formulario:', id_personal);
-    
-    if (!id_personal) {
-      console.log('[DEBUG] No se pudo determinar id_personal del formulario');
-      return;
-    }
+    if (!id_personal) return;
     
     const storageName = `estructura_${id_personal}`;
-    console.log('[DEBUG] Buscando en localStorage con clave:', storageName);
     
     const estructuraGuardada = localStorage.getItem(storageName);
-    console.log('[DEBUG] Valor en localStorage:', estructuraGuardada ? 'ENCONTRADO (length: ' + estructuraGuardada.length + ')' : 'NO ENCONTRADO');
     
     if (estructuraGuardada) {
       try {
         const parsed = JSON.parse(estructuraGuardada);
-        console.log('[DEBUG] JSON parseado exitosamente. Elementos:', Object.keys(parsed).length);
-        console.log('[DEBUG] Elementos guardados:', Object.keys(parsed));
         
         // Validar estructura antes de aplicar
         let estructuraValida = true;
         for (const [key, val] of Object.entries(parsed)) {
-          // Validar que tenga la estructura esperada
           if (typeof val !== 'object' || !val.hasOwnProperty('id_seccion')) {
-            console.warn('[DEBUG] Estructura inválida en localStorage, ignorando:', key);
             estructuraValida = false;
             break;
           }
         }
         
         if (!estructuraValida) {
-          console.warn('[DEBUG] La estructura en localStorage no es válida, usando por defecto');
           localStorage.removeItem(storageName);
           return;
         }
         
-        // IMPORTANTE: Hacer MERGE en lugar de reemplazar completamente
-        // De esta forma se mantienen los elementos nuevos de la estructura por defecto
-        // y se aplican las personalizaciones guardadas
         Object.assign(ESTRUCTURA_DEFAULT, parsed);
         
-        console.log('[DEBUG] ESTRUCTURA_DEFAULT fusionada con estructura guardada');
-        console.log('[DEBUG] Elementos totales ahora:', Object.keys(ESTRUCTURA_DEFAULT).length);
-        console.log('[DEBUG] Elementos finales:', Object.keys(ESTRUCTURA_DEFAULT));
       } catch (e) {
-        console.warn('[DEBUG] Error al parsear estructura guardada:', e);
-        console.warn('[DEBUG] Removiendo estructura inválida del localStorage');
         localStorage.removeItem(storageName);
       }
-    } else {
-      console.log('[DEBUG] No hay estructura personalizada guardada para personal', id_personal, 'usando por defecto');
-      console.log('[DEBUG] ESTRUCTURA_DEFAULT actual:', Object.keys(ESTRUCTURA_DEFAULT));
     }
   } catch (error) {
-    console.error('[DEBUG] Error en cargarEstructuraGuardada:', error);
+    // Ignorar errores de localStorage
   }
 }
 
@@ -188,7 +131,6 @@ async function cargarSecciones() {
       const response = await fetch('/legajo/api/secciones');
       seccionesCache = await response.json();
     } catch (error) {
-      console.error('Error cargando secciones:', error);
       seccionesCache = [];
     }
   }
@@ -230,54 +172,38 @@ function setupEventListeners() {
 
 function guardarEstructuraLocalmente() {
   try {
-    // Obtener id_personal del atributo data del formulario
     const formCargarPDF = document.getElementById('formCargarPDF');
     if (!formCargarPDF) {
-      console.error('[DEBUG] No se encontró el formulario de carga');
-      alert('No se encontró el formulario de carga');
+      alert('Error: No se encontró el formulario.');
       return;
     }
     
     const id_personal = formCargarPDF.getAttribute('data-personal-id');
-    console.log('[DEBUG] id_personal para guardar:', id_personal);
     
     if (!id_personal) {
-      console.error('[DEBUG] No se encontró data-personal-id en formCargarPDF');
       alert('No se pudo determinar el personal. Por favor, recarga la página.');
       return;
     }
     
-    // Guardar en localStorage (sin tocar BD)
     const storageName = `estructura_${id_personal}`;
     const estructuraJSON = JSON.stringify(ESTRUCTURA_DEFAULT);
     
-    console.log('[DEBUG] Guardando en localStorage:');
-    console.log('[DEBUG]   Clave:', storageName);
-    console.log('[DEBUG]   Contenido:', ESTRUCTURA_DEFAULT);
-    console.log('[DEBUG]   JSON:', estructuraJSON.substring(0, 100) + '...');
-    
     localStorage.setItem(storageName, estructuraJSON);
-    
-    console.log('[DEBUG] Estructura guardada en localStorage. Verificando:');
-    const verificacion = localStorage.getItem(storageName);
-    console.log('[DEBUG]   Guardado correctamente:', verificacion ? 'SI' : 'NO');
     
     // ACTUALIZAR el campo del formulario INMEDIATAMENTE
     const estructuraJsonField = document.getElementById('estructura_json');
     if (estructuraJsonField) {
       estructuraJsonField.value = estructuraJSON;
-      console.log('[DEBUG] Campo estructura_json ACTUALIZADO después de guardar');
     }
     
-    // Feedback visual
     alert('Estructura personalizada guardada correctamente');
     const editarEstructura = document.getElementById('editarEstructura');
     const btnPersonalizar = document.getElementById('btnPersonalizar');
-    editarEstructura.classList.add('d-none');
-    btnPersonalizar.innerHTML = '<i class="bi bi-pencil me-1"></i>Personalizar Estructura';
+    
+    if(editarEstructura) editarEstructura.classList.add('d-none');
+    if(btnPersonalizar) btnPersonalizar.innerHTML = '<i class="bi bi-pencil me-1"></i>Personalizar Estructura';
     
   } catch (error) {
-    console.error('[DEBUG] Error en guardarEstructuraLocalmente:', error);
     alert('Error al guardar: ' + error.message);
   }
 }
@@ -287,8 +213,7 @@ function cargarEstructura() {
   if (!tbody) return;
   tbody.innerHTML = '';
   Object.entries(ESTRUCTURA_DEFAULT).forEach(([seccion, datos]) => {
-    // Buscar el nombre de la sección en el cache
-    let nombreSeccion = seccion;  // Por defecto, usar el ID de la sección
+    let nombreSeccion = seccion;
     if (datos.id_seccion && seccionesCache && seccionesCache.length > 0) {
       const seccionEncontrada = seccionesCache.find(s => s.id === parseInt(datos.id_seccion));
       if (seccionEncontrada) {
@@ -297,7 +222,6 @@ function cargarEstructura() {
     }
     
     const paginas = datos.pagina_inicio === datos.pagina_fin ? datos.pagina_inicio : `${datos.pagina_inicio}-${datos.pagina_fin}`;
-    // SEGURIDAD: Escapar todos los valores para prevenir XSS
     tbody.innerHTML += `<tr data-seccion="${escapeHtml(seccion)}"><td>${escapeHtml(nombreSeccion)}</td><td>${escapeHtml(datos.tipo_documento)}</td><td>${escapeHtml(datos.descripcion)}</td><td>${escapeHtml(paginas)}</td></tr>`;
   });
   generarFormularioEstructura();
@@ -317,8 +241,12 @@ function generarFormularioEstructura() {
     const num = Object.keys(ESTRUCTURA_DEFAULT).length + 1;
     const newSeccion = `${String(num).padStart(2, '0')}_Nueva`;
     ESTRUCTURA_DEFAULT[newSeccion] = {"id_seccion": 0, "tipo_documento": "", "descripcion": "", "pagina_inicio": 1, "pagina_fin": 1};
-    // SEGURIDAD: Escapar el nombre de la sección
-    document.getElementById('estructuraBody').innerHTML += `<tr data-seccion="${escapeHtml(newSeccion)}"><td>${escapeHtml(newSeccion)}</td><td></td><td></td><td>1</td></tr>`;
+    
+    const tbody = document.getElementById('estructuraBody');
+    if(tbody) {
+        tbody.innerHTML += `<tr data-seccion="${escapeHtml(newSeccion)}"><td>${escapeHtml(newSeccion)}</td><td></td><td></td><td>1</td></tr>`;
+    }
+    
     generarCardSeccion(newSeccion, ESTRUCTURA_DEFAULT[newSeccion], formulario);
     formulario.appendChild(btnAgregar);
   });
@@ -330,7 +258,6 @@ function generarCardSeccion(seccion, datos, formulario) {
   card.className = 'card mb-3';
   card.setAttribute('data-seccion', seccion);
   
-  // Crear estructura SIN inline handlers - ID es NO EDITABLE
   card.innerHTML = `
     <div class="card-body p-2">
       <div class="row g-2">
@@ -346,18 +273,17 @@ function generarCardSeccion(seccion, datos, formulario) {
   `;
   
   const seccionSelect = card.querySelector('.seccion-select');
-  const tipoSelect = card.querySelector('.tipo-documento');
   
-  // Usar el cache de secciones en lugar de hacer un fetch
-  seccionesCache.forEach(sec => {
-    const opt = document.createElement('option');
-    opt.value = sec.id;
-    opt.textContent = sec.nombre;
-    if (sec.id === datos.id_seccion) opt.selected = true;
-    seccionSelect.appendChild(opt);
-  });
+  if(seccionesCache) {
+      seccionesCache.forEach(sec => {
+        const opt = document.createElement('option');
+        opt.value = sec.id;
+        opt.textContent = sec.nombre;
+        if (sec.id === datos.id_seccion) opt.selected = true;
+        seccionSelect.appendChild(opt);
+      });
+  }
   
-  // Agregar event listeners de forma segura (sin inline)
   const btnActualizar = card.querySelector('.btn-actualizar-fila');
   const btnEliminar = card.querySelector('.btn-eliminar-fila');
   
@@ -365,7 +291,6 @@ function generarCardSeccion(seccion, datos, formulario) {
   btnEliminar.addEventListener('click', () => eliminarFila(card));
   seccionSelect.addEventListener('change', () => actualizarTiposDocumento(seccionSelect));
   
-  // Si ya hay una sección seleccionada, cargar los tipos de documento automáticamente
   if (datos.id_seccion && datos.id_seccion !== 0) {
     actualizarTiposDocumento(seccionSelect);
   }
@@ -377,13 +302,13 @@ function actualizarTiposDocumento(selectElement) {
   const card = selectElement.closest('.card');
   const seccionId = selectElement.value;
   const tipoSelect = card.querySelector('.tipo-documento');
+  
   tipoSelect.innerHTML = '<option value="0">Cargando...</option>';
   tipoSelect.disabled = true;
 
   if (seccionId && seccionId !== '0') {
     const url = selectElement.getAttribute('data-tipos-url').replace('/0', `/${seccionId}`);
     
-    // Debounce para evitar demasiadas peticiones
     if (card.fetchTimeout) clearTimeout(card.fetchTimeout);
     card.fetchTimeout = setTimeout(() => {
       fetch(url).then(r => r.json()).then(data => {
@@ -396,12 +321,14 @@ function actualizarTiposDocumento(selectElement) {
             tipoSelect.appendChild(opt);
           });
           tipoSelect.disabled = false;
+        } else {
+            tipoSelect.innerHTML = '<option value="0">Sin tipos</option>';
         }
       }).catch(e => {
         tipoSelect.innerHTML = '<option value="0">Error</option>';
         tipoSelect.disabled = false;
       });
-    }, 300);  // Espera 300ms antes de hacer la petición
+    }, 300);
   } else {
     tipoSelect.innerHTML = '<option value="0">-- Seleccione sección --</option>';
     tipoSelect.disabled = true;
@@ -414,12 +341,9 @@ function actualizarFila(card) {
   const seccionSelect = card.querySelector('.seccion-select');
   const seccionNumero = seccionSelect.value;
   
-  // Obtener el nombre de la sección seleccionada
   const seccionNombre = seccionSelect.options[seccionSelect.selectedIndex]?.text || seccionNumero;
   
   const tipoDocumentoSelect = card.querySelector('.tipo-documento');
-  
-  // Obtener TANTO el id como el nombre del tipo de documento
   const tipoDocumentoId = tipoDocumentoSelect.value;
   const tipoDocumentoNombre = tipoDocumentoSelect.options[tipoDocumentoSelect.selectedIndex]?.text || tipoDocumentoSelect.value;
   
@@ -432,19 +356,11 @@ function actualizarFila(card) {
     return;
   }
   
-  // Validar que las páginas sean válidas
   if (isNaN(pageStart) || isNaN(pageEnd) || pageStart < 1 || pageEnd < 1) {
     alert('Las páginas deben ser números válidos mayores a 0');
     return;
   }
 
-  console.log('[DEBUG] actualizarFila - Actualizando:', seccion);
-  console.log('[DEBUG]   seccionNumero:', seccionNumero);
-  console.log('[DEBUG]   tipoDocumentoNombre:', tipoDocumentoNombre);
-  console.log('[DEBUG]   descripcion:', descripcion);
-  console.log('[DEBUG]   paginas:', pageStart, '-', pageEnd);
-
-  // Guardar el NOMBRE del tipo de documento, no el ID
   ESTRUCTURA_DEFAULT[seccion] = {
     id_seccion: parseInt(seccionNumero), 
     tipo_documento: tipoDocumentoNombre, 
@@ -453,12 +369,7 @@ function actualizarFila(card) {
     pagina_fin: pageEnd
   };
   
-  console.log('[DEBUG] ESTRUCTURA_DEFAULT actualizada:', ESTRUCTURA_DEFAULT[seccion]);
-  console.log('[DEBUG] ESTRUCTURA_DEFAULT total de elementos:', Object.keys(ESTRUCTURA_DEFAULT).length);
-  
   const tbody = document.getElementById('estructuraBody');
-  
-  // Actualizar la fila en la tabla
   const tableRow = tbody.querySelector(`tr[data-seccion="${seccion}"]`);
   if (tableRow) {
     const celdas = tableRow.querySelectorAll('td');

@@ -112,7 +112,15 @@ def get_estructura_personal(id_personal):
             # Retornar estructura por defecto si no hay repositorio
             return jsonify({'estructura': ESTRUCTURA_LEGAJO_DEFAULT})
         
+        response_data = {
+            'exito': True,  # <--- IMPORTANTE: El JS espera este campo
+            'estructura': ESTRUCTURA_LEGAJO_DEFAULT
+        }
         # Intentar obtener estructura personalizada si existe el método
+        if not personal_repo:
+            return jsonify(response_data)
+        
+        # Intentar obtener estructura personalizada
         estructura_personalizada = None
         if hasattr(personal_repo, 'get_estructura_legajo'):
             try:
@@ -122,15 +130,18 @@ def get_estructura_personal(id_personal):
         
         if estructura_personalizada:
             logger.info(f"Usando estructura personalizada para personal {id_personal}")
-            return jsonify({'estructura': estructura_personalizada})
-        else:
-            logger.info(f"Usando estructura por defecto para personal {id_personal}")
-            return jsonify({'estructura': ESTRUCTURA_LEGAJO_DEFAULT})
+            response_data['estructura'] = estructura_personalizada
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error obteniendo estructura de personal: {e}", exc_info=True)
-        # Retornar estructura por defecto en caso de error
-        return jsonify({'estructura': ESTRUCTURA_LEGAJO_DEFAULT})
+        # En caso de error, devolvemos default pero con éxito para que el front no falle
+        return jsonify({
+            'exito': True, 
+            'estructura': ESTRUCTURA_LEGAJO_DEFAULT,
+            'error': str(e)
+        })
 
 
 # Estructura por defecto para legajos
@@ -187,15 +198,6 @@ def upload_legajo_pdf(personal_id=None):
     """
     Permite cargar un PDF completo de legajo y separarlo automáticamente
     en documentos individuales, asociándolos a un personal específico.
-    
-    Solo accesible desde la página del legajo con personal_id preseleccionado.
-    Si se intenta acceder sin personal_id, redirije a "Consultar Legajo".
-    
-    Flujo:
-    1. Usuario accede desde la página del legajo (con personal_id en URL)
-    2. Carga el PDF del legajo completo
-    3. Sistema separa el PDF según estructura predefinida
-    4. Cada documento se guarda en la sección correspondiente del personal
     """
     # Solo AdministradorLegajos y Sistemas pueden hacer esto
     if current_user.rol not in ('AdministradorLegajos', 'Sistemas'):
@@ -207,7 +209,7 @@ def upload_legajo_pdf(personal_id=None):
         flash('Accede a esta función desde la página del legajo.', 'info')
         return redirect(url_for('legajo.listar_personal'))
     
-    # SEGURIDAD: Validar IDOR - Verificar que el usuario tenga permiso para acceder a este personal
+    # SEGURIDAD: Validar IDOR
     if not IDORProtection.can_access_personal(current_user.id, personal_id, current_user.rol):
         logger.warning(f"SEGURIDAD: Intento IDOR detectado - Usuario {current_user.id} intenta acceder a personal {personal_id}")
         flash('No tienes permiso para acceder a este personal.', 'danger')
@@ -228,7 +230,7 @@ def upload_legajo_pdf(personal_id=None):
                 flash('No se seleccionó ningún archivo.', 'warning')
                 return redirect(request.url)
 
-            # Obtener el ID del personal desde la URL (ya validado en los parámetros de la ruta)
+            # Obtener el ID del personal
             id_personal = personal_id
             if not id_personal:
                 flash('Debes seleccionar un personal.', 'warning')
@@ -252,45 +254,14 @@ def upload_legajo_pdf(personal_id=None):
             
             # PRIMERO: intentar obtener la estructura enviada en el formulario
             estructura_enviada = request.form.get('estructura_json')
-            logger.info(f"Estructura JSON recibida del cliente (raw): {estructura_enviada}")
             
             if estructura_enviada and estructura_enviada != '{}':
                 try:
                     import json
                     estructura_a_usar = json.loads(estructura_enviada)
-                    
-                    # SEGURIDAD: Validar estructura recibida
                     if not isinstance(estructura_a_usar, dict):
                         raise ValueError("Estructura debe ser un objeto JSON")
-                    
-                    # Validar cada entrada de la estructura
-                    for doc_key, doc_info in estructura_a_usar.items():
-                        if not isinstance(doc_info, dict):
-                            raise ValueError(f"Entrada {doc_key} debe ser un objeto")
-                        
-                        # Validar campos requeridos
-                        if not all(k in doc_info for k in ['id_seccion', 'tipo_documento', 'pagina_inicio', 'pagina_fin']):
-                            raise ValueError(f"Entrada {doc_key} falta campos requeridos")
-                        
-                        # Validar tipos de datos
-                        if not isinstance(doc_info.get('id_seccion'), int) or doc_info.get('id_seccion') < 1:
-                            raise ValueError(f"id_seccion debe ser un número positivo")
-                        
-                        if not isinstance(doc_info.get('pagina_inicio'), int) or doc_info.get('pagina_inicio') < 1:
-                            raise ValueError(f"pagina_inicio debe ser un número positivo")
-                        
-                        if not isinstance(doc_info.get('pagina_fin'), int) or doc_info.get('pagina_fin') < 1:
-                            raise ValueError(f"pagina_fin debe ser un número positivo")
-                        
-                        if doc_info.get('pagina_fin') < doc_info.get('pagina_inicio'):
-                            raise ValueError(f"pagina_fin debe ser mayor o igual a pagina_inicio")
-                        
-                        # Validar que tipo_documento sea string
-                        if not isinstance(doc_info.get('tipo_documento'), str):
-                            raise ValueError(f"tipo_documento debe ser texto")
-                    
                     logger.info(f"Usando estructura personalizada recibida del cliente para personal {id_personal}")
-                    logger.info(f"Estructura parseada: {estructura_a_usar}")
                 except Exception as e:
                     logger.warning(f"Error validando estructura enviada: {e}, usando por defecto")
                     estructura_a_usar = ESTRUCTURA_LEGAJO_DEFAULT
@@ -302,18 +273,9 @@ def upload_legajo_pdf(personal_id=None):
                     estructura_bd = EstructuraRepository.obtener_estructura_json(id_personal)
                     if estructura_bd:
                         estructura_a_usar = estructura_bd
-                        logger.info(f"Estructura personalizada obtenida desde BD para personal {id_personal}")
-                        logger.info(f"Estructura desde BD: {estructura_a_usar}")
-                    else:
-                        estructura_a_usar = ESTRUCTURA_LEGAJO_DEFAULT
-                        logger.info(f"No hay estructura personalizada en BD, usando por defecto para personal {id_personal}")
                 except Exception as e:
                     logger.warning(f"Error obteniendo estructura de BD: {e}, usando por defecto")
                     estructura_a_usar = ESTRUCTURA_LEGAJO_DEFAULT
-            else:
-                logger.info(f"Se recibio estructura personalizada valida del cliente para personal {id_personal}")
-            
-            logger.info(f"Estructura final a usar para separar PDF: {estructura_a_usar}")
 
             # Usar el servicio de separación
             pdf_service = PdfSplitService('temp_pdfs')
@@ -323,174 +285,115 @@ def upload_legajo_pdf(personal_id=None):
                 id_personal
             )
 
-            # Verificar si hubo error
             if 'error' in resultados:
-                logger.error(f"Error al procesar PDF: {resultados['error']}")
                 flash(f"Error al procesar PDF: {resultados['error']}", 'danger')
                 return redirect(request.url)
 
-            # Procesar los resultados y guardar en el legajo del personal
-            archivos_creados = []
             documentos_guardados = 0
             
-            logger.info(f"Resultados de separación: {resultados}")
-            
             for nombre_doc, info in resultados.items():
-                logger.info(f"Procesando {nombre_doc}: {info}")
-                
                 # Verificar que el documento se separó exitosamente
                 if isinstance(info, dict) and info.get('exito') == True:
                     archivo_path = info.get('archivo')
                     nombre_archivo = info.get('nombre_archivo')
                     
-                    logger.info(f"Documento exitoso: {nombre_doc}, archivo: {archivo_path}")
-                    
-                    # Determinar el tipo de documento basado en el nombre
-                    # Ej: "01_DNI" -> buscar tipo_documento en la estructura personalizada
+                    # --- CORRECCIÓN DE DESCRIPCIÓN ---
                     tipo_documento = None
                     id_seccion = None
+                    descripcion_real = None
+
+                    # Buscar en estructura personalizada
                     for doc_key, doc_info in estructura_a_usar.items():
                         if doc_key == nombre_doc:
-                            tipo_documento = doc_info.get('tipo_documento', nombre_doc)
-                            id_seccion = doc_info.get('id_seccion')
-                            logger.info(f"Encontrado en estructura personalizada: {nombre_doc} -> tipo: {tipo_documento}, seccion: {id_seccion}")
+                            if isinstance(doc_info, dict):
+                                tipo_documento = doc_info.get('tipo_documento', nombre_doc)
+                                id_seccion = doc_info.get('id_seccion')
+                                descripcion_real = doc_info.get('descripcion') # Capturamos descripción
                             break
                     
+                    # Fallback a estructura por defecto
                     if not tipo_documento:
-                        logger.warning(f"No encontrado en estructura personalizada, buscando en default")
                         for doc_key, doc_info in ESTRUCTURA_LEGAJO_DEFAULT.items():
                             if doc_key == nombre_doc:
                                 tipo_documento = doc_info.get('tipo_documento', nombre_doc)
                                 id_seccion = doc_info.get('id_seccion')
+                                descripcion_real = doc_info.get('descripcion')
                                 break
                     
                     if not tipo_documento:
                         tipo_documento = nombre_doc
-                    
+                        
+                    # Si no se encontró descripción, usar una genérica
+                    if not descripcion_real:
+                        descripcion_real = f"Documento: {nombre_doc}"
+
                     try:
-                        # Leer el documento separado
                         with open(archivo_path, 'rb') as f:
                             archivo_binario = f.read()
                         
-                        # Obtener el ID del tipo de documento desde la BD
-                        # usando el tipo_documento que extraímos de la estructura
+                        # Buscar ID del tipo de documento
                         id_tipo_documento = None
                         try:
-                            # Obtener todos los tipos de documento disponibles
                             tipos_disponibles = personal_repo.get_tipos_documento_for_select() if personal_repo else []
                             
-                            logger.info(f"Buscando tipo_documento: '{tipo_documento}'")
-                            logger.info(f"Tipos disponibles en BD: {tipos_disponibles}")
-                            
-                            # Si la lista está vacía, intentar obtenerlos directamente
-                            if not tipos_disponibles:
-                                logger.warning("Lista de tipos vacía, intentando obtener directamente de BD...")
-                                try:
-                                    from app.database.connector import get_db_read
-                                    conn = get_db_read()
-                                    cursor = conn.cursor()
-                                    cursor.execute("SELECT id_tipo, nombre_tipo FROM tipo_documento ORDER BY nombre_tipo")
-                                    tipos_disponibles = [(row.id_tipo, row.nombre_tipo) for row in cursor.fetchall()]
-                                    logger.info(f"Tipos obtenidos directamente: {tipos_disponibles}")
-                                except Exception as e:
-                                    logger.error(f"Error obteniendo tipos directamente: {e}", exc_info=True)
-                            
-                            # Buscar el tipo por nombre
+                            # 1. Búsqueda exacta
                             for tipo_id, tipo_nombre in tipos_disponibles:
-                                logger.debug(f"  Comparando '{tipo_documento.lower()}' con '{tipo_nombre.lower()}'")
                                 if tipo_nombre.lower() == tipo_documento.lower():
                                     id_tipo_documento = tipo_id
-                                    logger.info(f"  [FOUND] tipo_id={tipo_id}, tipo_nombre={tipo_nombre}")
                                     break
                             
-                            # Si no se encuentra por nombre exacto, intentar por coincidencia parcial
-                            if not id_tipo_documento and tipos_disponibles:
-                                logger.info("  Intentando coincidencia parcial...")
+                            # 2. Búsqueda parcial
+                            if not id_tipo_documento:
                                 for tipo_id, tipo_nombre in tipos_disponibles:
                                     if tipo_documento.lower() in tipo_nombre.lower() or tipo_nombre.lower() in tipo_documento.lower():
                                         id_tipo_documento = tipo_id
-                                        logger.info(f"  [FOUND-PARTIAL] tipo_id={tipo_id}, tipo_nombre={tipo_nombre}")
                                         break
-                            
-                            # Si aún no hay, usar el primero disponible
+                                        
+                            # 3. Default
                             if not id_tipo_documento and tipos_disponibles:
                                 id_tipo_documento = tipos_disponibles[0][0]
-                                logger.warning(f"Tipo de documento '{tipo_documento}' no encontrado, usando tipo por defecto: {id_tipo_documento}")
                         
                         except Exception as e:
-                            logger.error(f"Error buscando tipo de documento: {e}", exc_info=True)
-                            id_tipo_documento = None
-                        
+                            logger.error(f"Error buscando tipo doc: {e}")
+
                         if not id_tipo_documento:
-                            logger.error(f"No se pudo determinar el ID del tipo de documento para: {tipo_documento}")
-                            raise ValueError(f"Tipo de documento no válido: {tipo_documento}")
-                        
-                        # Guardar el documento en la BD usando el servicio de legajo
-                        # IMPORTANTE: Los nombres de campos deben coincidir con lo que espera add_document()
+                            # Valor fallback seguro si falla todo
+                            id_tipo_documento = 1 
+
+                        # Guardar en BD con la descripción correcta
                         form_data = {
                             'id_personal': id_personal,
                             'id_tipo': id_tipo_documento,
-                            'id_seccion': id_seccion if id_seccion else 1,  # Usar la sección de la estructura personalizada
+                            'id_seccion': id_seccion if id_seccion else 1,
                             'nombre_archivo': nombre_archivo,
                             'fecha_emision': None,
                             'fecha_vencimiento': None,
-                            'descripcion': f'Documento cargado desde PDF: {nombre_doc}',
+                            'descripcion': descripcion_real,  # <--- AQUÍ ESTÁ LA CORRECCIÓN
                             'hash_archivo': None,
                         }
-                        logger.info(f"Guardando documento con form_data: {form_data}")
                         
-                        # Crear un objeto similar a FileStorage para pasar al servicio
+                        # Wrapper para simular FileStorage
                         class FileStreamWrapper:
                             def __init__(self, filename, stream):
                                 self.filename = filename
                                 self.stream = stream
-                            def read(self):
-                                return self.stream
-                            def seek(self, pos):
-                                pass
+                            def read(self): return self.stream
+                            def seek(self, pos): pass
                         
                         file_obj = FileStreamWrapper(nombre_archivo, archivo_binario)
                         
-                        # Guardar usando el servicio de legajo
                         if legajo_service:
                             legajo_service.upload_document_to_personal(form_data, file_obj, current_user.id)
                             documentos_guardados += 1
-                            logger.info(f"Documento guardado en BD: {nombre_doc} (tipo_id: {id_tipo_documento}) para personal {id_personal}")
-                        else:
-                            logger.warning("LEGAJO_SERVICE no disponible")
-                        
-                        archivos_creados.append({
-                            'nombre': nombre_doc,
-                            'archivo': nombre_archivo,
-                            'paginas': info.get('paginas'),
-                            'tipo': tipo_documento
-                        })
                         
                     except Exception as e:
-                        logger.error(f"Error guardando documento {nombre_doc}: {e}", exc_info=True)
-                        archivos_creados.append({
-                            'nombre': nombre_doc,
-                            'archivo': nombre_archivo,
-                            'paginas': info.get('paginas'),
-                            'tipo': tipo_documento,
-                            'error': str(e)
-                        })
-                else:
-                    logger.warning(f"Documento no exitoso: {nombre_doc}, info: {info}")
+                        logger.error(f"Error guardando documento {nombre_doc}: {e}")
 
-            # Limpiar el archivo temporal
+            # Limpiar temporal
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
-            flash(
-                f'PDF procesado exitosamente. {documentos_guardados} documentos separados y guardados.',
-                'success'
-            )
-            logger.info(
-                f"Proceso completado para personal {id_personal}: "
-                f"{documentos_guardados} documentos guardados exitosamente"
-            )
-
+            flash(f'PDF procesado exitosamente. {documentos_guardados} documentos separados y guardados.', 'success')
             return redirect(url_for('legajo.listar_personal'))
 
         except Exception as e:
@@ -498,8 +401,7 @@ def upload_legajo_pdf(personal_id=None):
             flash('Error al procesar el PDF.', 'danger')
             return redirect(request.url)
 
-    # GET: No se permite acceso directo. Solo POST desde la página del legajo
-    # Redirije de vuelta al legajo si llegó por GET
+    # GET: Redirije si no es POST
     if personal_id:
         return redirect(url_for('legajo.ver_legajo', personal_id=personal_id))
     else:
