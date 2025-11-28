@@ -892,8 +892,6 @@ class SqlServerPersonalRepository(IPersonalRepository):
             cursor.execute(query)
             result = [_row_to_dict(cursor, row) for row in cursor.fetchall()]
             
-            # IMPORTANTE: Solo cerramos el cursor, NO la conexión (conn.close)
-            cursor.close() 
             return result if result else []
         except Exception as e:
             print(f"ERROR en count_empleados_por_unidad: {str(e)}")
